@@ -9,6 +9,7 @@
  */
 import { setHuruf } from './watak.js';
 import { buatKuda, buatItik, buatBurung } from './haiwan.js';
+import { buatBot, buatRoket, buatJet } from './kenderaan.js';
 import { buatBuahSayur, SPESIES, cariSpesies } from './buahsayur.js';
 
 export { SPESIES, cariSpesies };
@@ -38,15 +39,15 @@ export const TEMA = {
     id: 'kuda',
     nama: 'Lumba Kuda',
     ikon: '🐴',
-    huraian: 'Kuda + joki (joki ikut jantina & warna peserta)',
+    huraian: 'Kuda lumba — kain pelana ikut warna peserta',
     pelari: 'kuda',
     kkerja: 'berlari',
     lorongKata: 'Lorong',
     skala: 0.72,
     y: 0,
     lajuLari: 1,
-    pilihSpesies: true, // joki ialah buah/sayur pilihan peserta
-    // di podium: menyerong supaya joki tidak terlindung di belakang kepala kuda
+    // TIADA joki. Kuda sahaja; peserta dikenali melalui warna kain pelana.
+    // Menyerong sedikit di podium supaya badan kuda tidak kelihatan rata.
     sudutPodium: 0.95,
     langit: ['#2F7ED8', '#9CCBF0', '#FBF0DC'],
     kabus: '#E6DCC6',
@@ -91,12 +92,74 @@ export const TEMA = {
     padang: 'awan',
     rumput: ['#58B35F', '#64BE6B'],
   },
+  bot: {
+    id: 'bot',
+    nama: 'Bot Laju',
+    ikon: '🚤',
+    huraian: 'Bot laju memecut di atas air',
+    pelari: 'bot',
+    kkerja: 'meluncur',
+    lorongKata: 'Laluan',
+    skala: 1.0,
+    y: 0.05,
+    lajuLari: 1,
+    lokasiCadang: 'laut',   // tempat paling sesuai (MC masih bebas pilih)
+    langit: ['#1E6FD0', '#7FC2F0', '#DFF4FF'],
+    kabus: '#BFE2F5',
+    trek: '#2E86C6',
+    pinggir: '#C08A52',
+    padang: 'air',
+    rumput: ['#4FA35A', '#5CB167'],
+  },
+  roket: {
+    id: 'roket',
+    nama: 'Roket Angkasa',
+    ikon: '🚀',
+    huraian: 'Roket memecut dari Bumi ke angkasa',
+    pelari: 'roket',
+    kkerja: 'meluncur',
+    lorongKata: 'Laluan',
+    skala: 0.95,
+    y: 0.9,
+    lajuLari: 1,
+    lokasiCadang: 'angkasa',
+    langit: ['#05081A', '#131A42', '#2A1E52'],
+    kabus: '#0A0F26',
+    trek: '#101A33',
+    pinggir: '#1A2340',
+    padang: 'rumput',
+    rumput: ['#2A3358', '#323C66'],
+  },
+  jet: {
+    id: 'jet',
+    nama: 'Jet Pejuang',
+    ikon: '✈️',
+    huraian: 'Jet pejuang terbang laju di awan',
+    pelari: 'jet',
+    kkerja: 'terbang',
+    lorongKata: 'Laluan',
+    skala: 0.85,
+    y: 1.9,
+    lajuLari: 1,
+    lokasiCadang: 'awan',
+    langit: ['#2E86E8', '#8FC8F7', '#FFF6E4'],
+    kabus: '#DCEDFB',
+    trek: '#9AD4F7',
+    pinggir: '#FFFFFF',
+    padang: 'awan',
+    rumput: ['#58B35F', '#64BE6B'],
+  },
 };
 
 // sudut lalai di podium (0 = menghadap kamera podium)
 TEMA.wira.sudutPodium = 0;
 TEMA.itik.sudutPodium = 0.45;
 TEMA.burung.sudutPodium = 0.35;
+// Kenderaan panjang: serong supaya bentuknya jelas dari kamera podium,
+// bukan sekadar hidung menghala ke kamera.
+TEMA.bot.sudutPodium = 0.8;
+TEMA.roket.sudutPodium = 0.7;
+TEMA.jet.sudutPodium = 0.85;
 
 export const SENARAI_TEMA = Object.values(TEMA);
 export const adaTema = (id) => Object.prototype.hasOwnProperty.call(TEMA, id);
@@ -112,13 +175,16 @@ export function buatPelari(idTema, p) {
   if (idTema === 'kuda') return buatKuda(p);
   if (idTema === 'itik') return buatItik(p);
   if (idTema === 'burung') return buatBurung(p);
+  if (idTema === 'bot') return buatBot(p);
+  if (idTema === 'roket') return buatRoket(p);
+  if (idTema === 'jet') return buatJet(p);
   return buatBuahSayur(p);
 }
 
-/** Tukar huruf di dada — hanya bermakna untuk tema yang ada watak manusia. */
+/** Tukar huruf di dada. Hanya watak manusia lama ada baju berhuruf;
+ *  buah/sayur, haiwan dan kenderaan tidak — jadi selalunya tiada apa berlaku. */
 export function setHurufPelari(pelari, huruf) {
   if (pelari.wira) setHuruf(pelari.wira, huruf);
-  else if (pelari.joki) setHuruf(pelari.joki, huruf);
 }
 
 /** Huruf besar pertama nama peserta (untuk baju). */

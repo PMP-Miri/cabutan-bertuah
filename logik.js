@@ -7,9 +7,51 @@
 var Logik = (function () {
   'use strict';
 
-  var MASA = { KIRA: 3000, LARI: 5000, RAIKAN: 4500 }; // milisaat
-  var HAD = { PESERTA: 300, HADIAH: 60, PAPAR: 12, NAMA: 28 };
-  var TEMA_SAH = ['wira', 'kuda', 'itik', 'burung'];
+  var MASA = { KIRA: 3000, LARI: 5000, RAIKAN: 4500 }; // milisaat (LARI = lalai; MC boleh pilih 5-8 s)
+  var HAD = { PESERTA: 300, HADIAH: 60, PAPAR: 12, NAMA: 28, LARI_MIN: 5000, LARI_MAKS: 8000 };
+  var TEMA_SAH = ['wira', 'kuda', 'itik', 'burung', 'bot', 'roket', 'jet'];
+  var LOKASI_SAH = ['trek', 'gunung', 'tasik', 'awan', 'laut', 'angkasa'];
+  /* Tempat yang SESUAI bagi setiap tema. Yang pertama = lalai.
+     (roket hanya bumi→angkasa; bot hanya di air; jet hanya di awan) */
+  var LOKASI_TEMA = {
+    wira: ['trek', 'gunung', 'tasik', 'awan'],
+    kuda: ['trek', 'gunung', 'tasik', 'awan'],
+    itik: ['trek', 'tasik', 'laut'],
+    burung: ['trek', 'gunung', 'tasik', 'awan'],
+    bot: ['laut', 'tasik'],
+    roket: ['angkasa'],
+    jet: ['awan']
+  };
+  function lokasiUntuk(tema) { return LOKASI_TEMA[tema] || LOKASI_TEMA.wira; }
+
+  /** Tempoh larian (ms) bagi satu pusingan. Larian lama tanpa medan `lari` = 5 s. */
+  function masaLari(L) { return (L && L.lari) || MASA.LARI; }
+
+  function semakDurasi(x) {
+    var ms = Math.round(Number(x));
+    if (ms < 100) ms *= 1000; // terima saat atau milisaat
+    if (!(ms >= HAD.LARI_MIN && ms <= HAD.LARI_MAKS)) salah('Tempoh larian mesti antara 5 hingga 8 saat.');
+    return ms;
+  }
+
+  /* ── Rawak ADIL untuk memilih pemenang ──
+     `benih` daripada pelayan ialah 32 aksara heks daripada penjana rawak
+     kriptografi (Google Apps Script: Utilities.getUuid → Java SecureRandom;
+     pelayar: crypto.getRandomValues). Kita ambil 32 bit sekali gus dan guna
+     PENSAMPELAN TOLAK (rejection sampling): nombor di hujung julat yang akan
+     menyebabkan sesetengah peserta dapat peluang lebih sedikit dibuang dan
+     bahagian seterusnya digunakan. Hasilnya setiap peserta layak mendapat
+     kebarangkalian TEPAT 1/n. */
+  function indeksAdil(n, benih, r) {
+    var heks = String(benih || '').replace(/[^0-9a-f]/gi, '');
+    var had = Math.floor(4294967296 / n) * n; // gandaan n terbesar ≤ 2^32
+    for (var i = 0; i + 8 <= heks.length; i += 8) {
+      var x = parseInt(heks.slice(i, i + 8), 16);
+      if (x < had) return x % n;
+    }
+    // tiada benih kriptografi (cth. ujian): guna PRNG biasa
+    return Math.floor(r() * n);
+  }
 
   /* ── Rawak ── */
   function rawak(benih) {
@@ -43,6 +85,8 @@ var Logik = (function () {
       versi: 2,
       tajuk: tajuk || 'Wira Pecut',
       tema: 'wira', // wira | kuda | itik | burung
+      lokasi: 'trek', // trek | gunung | tasik | awan
+      durasi: MASA.LARI, // tempoh larian (ms), 5000-8000
       muzik: true,  // muzik latar di skrin pentas
       fasa: 'persediaan', // persediaan → daftar → acara → tamat
       hadiah: [], // [{id, nama, status:'menunggu'|'dimenangi'}]
@@ -71,37 +115,53 @@ var Logik = (function () {
     var L = k.larian;
     if (!L) return 'sedia';
     if (kini < L.mula) return 'kira';
-    if (kini < L.mula + MASA.LARI) return 'lari';
-    if (kini < L.mula + MASA.LARI + MASA.RAIKAN) return 'raikan';
+    if (kini < L.mula + masaLari(L)) return 'lari';
+    if (kini < L.mula + masaLari(L) + MASA.RAIKAN) return 'raikan';
     return 'sedia';
+  }
+
+  /** Tetapan yang dikongsi oleh `sediakan` dan `tetapan`. */
+  function terapTetapan(k, d, kini) {
+    if (d.tema != null) {
+      if (TEMA_SAH.indexOf(String(d.tema)) < 0) salah('Tema tidak dikenali.');
+      if (k.pusingan > 0 && String(d.tema) !== k.tema) salah('Tema tidak boleh ditukar selepas pusingan pertama bermula.');
+      k.tema = String(d.tema);
+    }
+    var bolehTempat = lokasiUntuk(k.tema);
+    if (d.lokasi != null) {
+      if (LOKASI_SAH.indexOf(String(d.lokasi)) < 0) salah('Lokasi tidak dikenali.');
+      if (bolehTempat.indexOf(String(d.lokasi)) < 0) salah('Tempat itu tidak sesuai untuk tema ini.');
+      k.lokasi = String(d.lokasi);
+    } else if (bolehTempat.indexOf(k.lokasi || 'trek') < 0) {
+      // tema baharu tidak sesuai dengan tempat lama → guna tempat lalai tema
+      k.lokasi = bolehTempat[0];
+    }
+    if (d.durasi != null) k.durasi = semakDurasi(d.durasi);
+    if (d.muzik != null) k.muzik = !!d.muzik;
+    if ((d.lokasi != null || d.durasi != null) && fasaLarian(k, kini) !== 'sedia') {
+      salah('Tunggu pusingan semasa selesai dahulu.');
+    }
   }
 
   /* ── Tindakan ── */
   var TINDAKAN = {
     /** MC: tajuk + senarai hadiah (satu baris satu hadiah). */
-    sediakan: function (k, d) {
+    sediakan: function (k, d, kini) {
       if (k.fasa !== 'persediaan' && k.fasa !== 'daftar') salah('Acara sudah bermula. Hadiah tidak boleh diubah.');
       var senarai = (d.hadiah || []).map(function (x) { return String(x).trim(); }).filter(Boolean);
       if (!senarai.length) salah('Masukkan sekurang-kurangnya satu hadiah.');
       if (senarai.length > HAD.HADIAH) salah('Maksimum ' + HAD.HADIAH + ' hadiah.');
       k.tajuk = String(d.tajuk || k.tajuk).trim().slice(0, 60) || 'Wira Pecut';
-      if (d.tema != null) {
-        if (TEMA_SAH.indexOf(String(d.tema)) < 0) salah('Tema tidak dikenali.');
-        k.tema = String(d.tema);
-      }
-      if (d.muzik != null) k.muzik = !!d.muzik;
+      terapTetapan(k, d, kini);
       k.hadiah = senarai.map(function (n, i) { return { id: 'H' + (i + 1), nama: n.slice(0, 60), status: 'menunggu' }; });
       k.fasa = 'daftar';
     },
 
-    /** MC: tukar tema atau muzik SELEPAS acara dibuka (sebelum pusingan 1). */
-    tetapan: function (k, d) {
-      if (d.tema != null) {
-        if (TEMA_SAH.indexOf(String(d.tema)) < 0) salah('Tema tidak dikenali.');
-        if (k.pusingan > 0) salah('Tema tidak boleh ditukar selepas pusingan pertama bermula.');
-        k.tema = String(d.tema);
-      }
-      if (d.muzik != null) k.muzik = !!d.muzik;
+    /** MC: tukar tetapan selepas acara dibuka.
+     *  Tema terkunci selepas pusingan 1; lokasi, tempoh & muzik boleh ditukar
+     *  bila-bila (berkuat kuasa pusingan seterusnya). */
+    tetapan: function (k, d, kini) {
+      terapTetapan(k, d, kini);
     },
 
     /** Peserta (telefon): daftar. Peranti yang sama → rekod yang sama. */
@@ -119,7 +179,7 @@ var Logik = (function () {
         id: idRawak(r, 8),
         no: k.peserta.length + 1,
         nama: nama.slice(0, HAD.NAMA),
-        jantina: d.jantina === 'perempuan' ? 'perempuan' : 'lelaki',
+        jantina: 'lelaki', // pilihan jantina dibuang (tidak relevan); medan dikekalkan untuk keserasian
         warna: String(d.warna || 'hijau').slice(0, 16),
         spesies: String(d.spesies || 'epal').slice(0, 16),
         kulit: Math.max(0, Math.min(3, d.kulit | 0)),
@@ -131,7 +191,7 @@ var Logik = (function () {
     },
 
     /** MC: mula pusingan. `jangka` = nombor pusingan yang MC nampak (+1) — elak tekan dua kali. */
-    mula: function (k, d, kini, r) {
+    mula: function (k, d, kini, r, benih) {
       if (k.fasa !== 'daftar' && k.fasa !== 'acara') salah('Acara belum dibuka.');
       if (fasaLarian(k, kini) !== 'sedia') salah('Pusingan sedang berjalan. Tunggu sehingga selesai.');
       if (Number(d.jangka) !== k.pusingan + 1) salah('Pusingan ' + d.jangka + ' sudah dimulakan. Skrin dikemas kini.');
@@ -140,23 +200,27 @@ var Logik = (function () {
       var calon = layak(k);
       if (!calon.length) salah('Tiada peserta layak lagi.');
 
-      var pemenang = calon[Math.floor(r() * calon.length)];
+      // Pemenang dipilih SEKARANG (saat MC tekan butang), bukan lebih awal.
+      // Tiada senarai pemenang disimpan terlebih dahulu.
+      var pemenang = calon[indeksAdil(calon.length, benih, r)];
       var lain = kocok(calon.filter(function (p) { return p.id !== pemenang.id; }), r).slice(0, HAD.PAPAR - 1);
       var lorong = kocok([pemenang].concat(lain), r).map(function (p) { return p.id; });
 
       k.pusingan += 1;
       k.fasa = 'acara';
       var mula = kini + MASA.KIRA;
+      var lari = k.durasi || MASA.LARI;
       k.larian = {
         no: k.pusingan, hadiahId: h.id, hadiah: h.nama,
-        mula: mula, lorong: lorong, benih: idRawak(r, 10),
+        mula: mula, lari: lari, lorong: lorong, benih: idRawak(r, 10),
         pemenangId: pemenang.id, calon: calon.length
       };
       h.status = 'dimenangi';
       k.pemenang.push({
         pusingan: k.pusingan, pesertaId: pemenang.id, no: pemenang.no, nama: pemenang.nama,
         hadiahId: h.id, hadiah: h.nama, kod: idRawak(r, 4), status: 'menang',
-        dedah: mula + MASA.LARI
+        calon: calon.length, masa: kini,
+        dedah: mula + lari
       });
     },
 
@@ -180,7 +244,7 @@ var Logik = (function () {
     if (!fn) salah('Tindakan tidak dikenali: ' + nama);
     var k = JSON.parse(JSON.stringify(keadaan || baru()));
     var r = rawak((benih == null ? Math.random() : benih) + '|' + kini + '|' + nama);
-    var hasil = fn(k, data || {}, kini, r) || {};
+    var hasil = fn(k, data || {}, kini, r, benih) || {};
     k.dikemaskini = kini;
     return { keadaan: k, hasil: hasil };
   }
@@ -213,13 +277,14 @@ var Logik = (function () {
     if (L) L.lorong.forEach(function (id) { tambah(ikutId[id]); });
     var out = {
       tajuk: k.tajuk, tema: k.tema || 'wira', muzik: k.muzik !== false,
+      lokasi: k.lokasi || 'trek', durasi: k.durasi || MASA.LARI,
       fasa: k.fasa, pusingan: k.pusingan, kini: kini,
       jumlahPeserta: k.peserta.length, layak: layak(k).length,
       jumlahHadiah: k.hadiah.length, bakiHadiah: bakiHadiah(k),
       hadiahSeterusnya: (hadiahSeterusnya(k) || {}).nama || null,
       peserta: pelari,
       larian: L ? {
-        no: L.no, hadiah: L.hadiah, mula: L.mula, fasa: fasaLarian(k, kini),
+        no: L.no, hadiah: L.hadiah, mula: L.mula, lari: masaLari(L), fasa: fasaLarian(k, kini),
         lorong: L.lorong, benih: L.benih, pemenangId: L.pemenangId
       } : null,
       pemenang: terdedah.map(function (w) {
@@ -244,6 +309,9 @@ var Logik = (function () {
     out.kini = kini;
     if (!out.tema) out.tema = 'wira';        // keadaan lama (versi 1)
     if (out.muzik === undefined) out.muzik = true;
+    if (!out.lokasi) out.lokasi = 'trek';
+    if (!out.durasi) out.durasi = MASA.LARI;
+    if (out.larian && !out.larian.lari) out.larian.lari = MASA.LARI;
     out.peserta.forEach(function (p) { delete p.peranti; });
     out.layak = layak(k).length;
     out.jumlahPeserta = k.peserta.length;
@@ -283,7 +351,10 @@ var Logik = (function () {
   }
 
   return {
-    MASA: MASA, HAD: HAD, baru: baru, laksana: laksana, awam: awam, penuh: penuh,
+    MASA: MASA, HAD: HAD, LOKASI_SAH: LOKASI_SAH, TEMA_SAH: TEMA_SAH,
+    LOKASI_TEMA: LOKASI_TEMA, lokasiUntuk: lokasiUntuk,
+    masaLari: masaLari, indeksAdil: indeksAdil,
+    baru: baru, laksana: laksana, awam: awam, penuh: penuh,
     fasaLarian: fasaLarian, layak: layak, koreografi: koreografi, kemajuan: kemajuan,
     kedudukan: kedudukan, rawak: rawak
   };

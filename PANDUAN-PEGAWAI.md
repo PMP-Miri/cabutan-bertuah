@@ -18,16 +18,57 @@ Tip: tandakan pautan `.../index.html#mc` pada laptop MC. Tetingkap PIN terus ter
 
 ---
 
-## Empat tema (pilih satu setiap acara)
+## Tujuh watak (pilih satu setiap acara)
 
-| Tema | Apa yang orang ramai nampak |
+| Watak | Apa yang orang ramai nampak | Peserta pilih |
+|---|---|---|
+| 🥕 **Buah & Sayur** | 20 watak buah & sayur comel berlari | buah/sayur sendiri |
+| 🐴 **Lumba Kuda** | Kuda lumba (**tiada joki**) | warna kain pelana |
+| 🦆 **Itik Berenang** | Itik getah bertopi kelasi | warna itik |
+| 🐦 **Burung Terbang** | Burung comel terbang | warna bulu |
+| 🚤 **Bot Laju** | Bot memecut, semburan air di belakang | warna bot |
+| 🚀 **Roket Angkasa** | Roket berapi di trek neon | warna roket |
+| ✈️ **Jet Pejuang** | Jet dengan afterburner & kontrel | warna jet |
+
+Watak boleh ditukar sehingga pusingan pertama bermula, kemudian terkunci.
+
+## Enam tempat larian
+
+| Tempat | Pemandangan |
 |---|---|
-| 🥕 **Buah & Sayur** | 20 watak buah & sayur comel (pilihan peserta) berlari di trek |
-| 🐴 **Lumba Kuda** | Kuda berlari, jokinya buah/sayur pilihan peserta |
-| 🦆 **Itik Berenang** | Itik getah berenang di kolam |
-| 🐦 **Burung Terbang** | Burung comel terbang di litar udara |
+| 🏟️ **Stadium** | Trek olahraga, tempat duduk penuh penonton |
+| ⛰️ **Atas Gunung** | Plato tinggi, trek tanah merah, banjaran bersalji |
+| 🏞️ **Atas Tasik** | Pelantar kayu atas air, daun teratai, bukit hijau |
+| 🌊 **Atas Laut** | Pelantar atas lautan terbuka, pulau kelapa, camar |
+| ☁️ **Atas Awan** | Trek pelangi atas pulau awan, pelangi besar |
+| 🌌 **Angkasa** | Trek neon di orbit, Bumi di bawah, bintang & planet bercincin |
 
-Tema boleh ditukar sehingga pusingan pertama bermula, kemudian terkunci.
+### Tempat mana sesuai untuk watak mana
+
+Sistem hanya tunjukkan tempat yang **masuk akal** untuk watak yang dipilih,
+jadi pegawai tidak boleh tersilap pilih (contohnya roket di atas tasik).
+
+| Watak | Tempat yang boleh dipilih |
+|---|---|
+| Buah & Sayur, Kuda, Burung | Stadium · Gunung · Tasik · Awan |
+| Itik | Stadium · Tasik · Laut |
+| 🚤 Bot | **Laut · Tasik** sahaja |
+| 🚀 Roket | **Angkasa** sahaja (bumi ke angkasa) |
+| ✈️ Jet | **Awan** sahaja |
+
+Bila kau tukar watak, tempat yang sesuai dipilih automatik. Tempat boleh
+ditukar **bila-bila masa** termasuk di tengah acara (⚙️ → Tukar tempat larian),
+asalkan ia sesuai dengan watak. Peraturan cabutan langsung tidak berubah.
+
+## Tempoh larian 5 hingga 8 saat
+
+Pilih dalam LANGKAH 1 atau tukar bila-bila di ⚙️. Lagi panjang = lagi
+mendebarkan, tetapi satu pusingan jadi lebih lama:
+
+| Tempoh | Satu pusingan | 20 hadiah |
+|---|---|---|
+| 5 saat | ~12.5 saat | ~4 minit |
+| 8 saat | ~15.5 saat | ~5 minit |
 
 ---
 
@@ -47,7 +88,8 @@ Bar putih di bawah skrin menunjukkan **hadiah pusingan ini** dan satu butang hij
 
 1. Umumkan hadiah.
 2. Tekan **▶ MULA PUSINGAN n**.
-3. Bar hilang sendiri. Kira-kira 12 saat: kiraan 3-2-1, larian 5 saat, pemenang di podium.
+3. Bar hilang sendiri. Kira-kira 12-16 saat: kiraan 3-2-1, larian (5-8 saat
+   ikut pilihan), pemenang di podium.
 4. Bar muncul semula untuk pusingan seterusnya.
 
 ### Kalau pemenang tiada di dewan
@@ -58,7 +100,8 @@ hadapan; orang itu tidak boleh menang lagi.
 
 ## Butang ⚙️ (di hujung bar)
 
-Tukar tema, hidup/mati muzik, skrin penuh, muat turun CSV pemenang,
+Tukar watak, **tukar tempat larian**, **tukar tempoh**, hidup/mati muzik,
+skrin penuh, muat turun CSV pemenang,
 **🔒 senarai pemenang & kod tuntutan** (tertutup, kerana skrin dilihat orang ramai),
 tamatkan acara, padam semua, keluar mod MC.
 
@@ -95,6 +138,30 @@ tab 1 masuk sebagai MC, tab 2 jadi peserta. Dalam ⚙️ ada butang tambah 20 pe
 **Mula acara baharu?** ⚙️ → **🗑 Padam semua**. Akan tanya dua kali.
 
 ---
+
+## Adakah cabutan ini betul-betul rawak?
+
+Ya. Kalau ada peserta bertanya, ini jawapannya.
+
+**Bila pemenang dipilih?** Pada saat MC menekan butang, bukan lebih awal.
+Tiada senarai pemenang disediakan sebelum acara. Sebelum butang ditekan,
+tiada apa-apa dalam sistem yang menyimpan siapa akan menang.
+
+**Rawak dari mana?** Daripada penjana rawak **kriptografi** sistem pengendalian
+(di Google Apps Script: `Utilities.getUuid()`, iaitu `SecureRandom` Java).
+Ia bukan `Math.random()` biasa. Setiap cabutan guna 128 bit rawak baharu.
+
+**Setiap orang peluang sama?** Ya, tepat 1/n untuk n peserta yang masih layak.
+Sistem menggunakan kaedah **pensampelan tolak** (rejection sampling), bukan
+sekadar "baki bahagi" (`rawak % n`) yang boleh memberi sedikit kelebihan
+kepada nombor-nombor awal. Dalam ujian 200,000 cabutan bagi setiap saiz
+kumpulan (7, 23 dan 100 orang), taburan lulus ujian khi-kuasa-dua.
+
+**Pemenang tidak boleh menang dua kali** — nama yang sudah menang dikeluarkan
+daripada senarai layak pusingan berikutnya.
+
+**Larian 3D itu pula?** Animasi hanya **melakonkan** keputusan yang sudah
+ditetapkan. Siapa pecut di depan pada saat ke-3 tidak mengubah apa-apa.
 
 ## Had sistem
 

@@ -31,6 +31,15 @@ export function buatAdegan({ scene, camera, Logik }) {
     });
     kolam.clear();
     stadium.setTema(T);
+    stadium.setLokasi(lokasiDipasang || 'trek', T);
+  }
+
+  /** Tukar lokasi (trek / gunung / tasik / awan). Pelari tidak perlu dibina semula. */
+  let lokasiDipasang = '';
+  function pasangLokasi(id) {
+    if (id === lokasiDipasang) return;
+    lokasiDipasang = id;
+    stadium.setLokasi(id, T);
   }
 
   function pelariUntuk(p) {
@@ -110,6 +119,7 @@ export function buatAdegan({ scene, camera, Logik }) {
   function kemas(k, kini) {
     const s = kini / 1000;
     pasangTema((k && k.tema) || 'wira');
+    pasangLokasi((k && k.lokasi) || 'trek');
     const L = k && k.larian;
     const pesertaIkutId = new Map((k ? k.peserta : []).map((p) => [p.id, p]));
     kolam.forEach((w) => { w.grup.visible = false; });
@@ -135,8 +145,10 @@ export function buatAdegan({ scene, camera, Logik }) {
       if (korCache.kunci !== kunci) korCache = { kunci, kor: Logik.koreografi(L) };
       const kor = korCache.kor;
       const pemenangId = L.pemenangId;
-      const tamatLari = tau >= MASA.LARI;
-      u = klip(tau / MASA.LARI);
+      const LARI = Logik.masaLari(L);            // 5-8 s, pilihan MC
+      const laju = T.lajuLari * Math.sqrt(MASA.LARI / LARI); // larian lebih lama → langkah lebih santai
+      const tamatLari = tau >= LARI;
+      u = klip(tau / LARI);
 
       // kedudukan setiap pelari
       const pusat = new THREE.Vector3();
@@ -159,11 +171,11 @@ export function buatAdegan({ scene, camera, Logik }) {
           const pr = Logik.kemajuan(x, u);
           const tt = titik(pr, lorong);
           letak(o, tt);
-          o.pose('lari', tl, T.lajuLari);
+          o.pose('lari', tl, laju);
           pusat.add(o.grup.position); arahPurata += tt.arah; bil++;
           fasa = 'lari';
         } else {
-          const tr = (tau - MASA.LARI) / 1000;
+          const tr = (tau - LARI) / 1000;
           const akhir = Logik.kemajuan(x, 1);
           if (x.menang) {
             // terus melepasi garisan, kemudian lompat ke podium
@@ -174,17 +186,17 @@ export function buatAdegan({ scene, camera, Logik }) {
             pos.y += Math.sin(Math.PI * klip((tr - 0.7) / 1.0)) * 2.2;
             o.grup.position.copy(pos);
             o.grup.rotation.y = lerp(Math.PI / 2, T.sudutPodium || 0, a);
-            if (tr < 0.7) o.pose('lari', tl, T.lajuLari * Math.max(0.3, 1 - tr));
+            if (tr < 0.7) o.pose('lari', tl, laju * Math.max(0.3, 1 - tr));
             else if (tr < 1.7) o.pose('menang', 0.2);
             else o.pose('menang', tr - 1.7);
-            if (tr >= 1.7 && tau > MASA.LARI + MASA.RAIKAN) o.pose('sedia', s);
+            if (tr >= 1.7 && tau > LARI + MASA.RAIKAN) o.pose('sedia', s);
           } else {
             const tt = titik(akhir + 0.035 * (1 - Math.exp(-tr * 2.2)), lorong);
             letak(o, tt);
-            if (tr < 1.2) o.pose('lari', tl, T.lajuLari * (1 - tr * 0.6));
+            if (tr < 1.2) o.pose('lari', tl, laju * (1 - tr * 0.6));
             else o.pose('jogging', tl);
           }
-          fasa = tau < MASA.LARI + MASA.RAIKAN ? 'raikan' : 'sedia';
+          fasa = tau < LARI + MASA.RAIKAN ? 'raikan' : 'sedia';
         }
         const kd = kedudukan.indexOf(x.id) + 1;
         label.push({
@@ -206,7 +218,7 @@ export function buatAdegan({ scene, camera, Logik }) {
         else kam = syot.penamat();
         teruja = 0.35 + u * 0.65;
       } else {
-        const tr = (tau - MASA.LARI) / 1000;
+        const tr = (tau - LARI) / 1000;
         if (tr < 0.6) kilat = 1 - tr / 0.6;
         const akhirRaikan = MASA.RAIKAN / 1000;
         if (tr < 0.9) kam = syot.penamat();
@@ -216,7 +228,7 @@ export function buatAdegan({ scene, camera, Logik }) {
         teruja = tr < akhirRaikan ? 1 : 0.15;
         konfeti.kemas(tr - 1.6, podiumPos);
       }
-      if (tau < MASA.LARI) konfeti.kemas(-1, podiumPos);
+      if (tau < LARI) konfeti.kemas(-1, podiumPos);
     }
 
     stadium.kemasOrang(s, teruja);

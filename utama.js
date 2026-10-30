@@ -42,7 +42,7 @@ const S = {
       const awalTayang = L.mula - MASA.KIRA;
       // dapat tahu semasa kiraan/larian → main dari kiraan detik 3-2-1
       // dapat tahu selepas garisan penamat → tunjuk keputusan terus
-      S.lewat = kini > L.mula + MASA.LARI ? 0 : Math.max(0, Math.min(MASA.KIRA + MASA.LARI, kini - awalTayang));
+      S.lewat = kini > L.mula + Logik.masaLari(L) ? 0 : Math.max(0, Math.min(MASA.KIRA + Logik.masaLari(L), kini - awalTayang));
     }
   },
 };
@@ -147,7 +147,11 @@ function papar(r, kini) {
   const T = ambilTema(k.tema);
   const sayaId = k.saya && k.saya.id;
 
-  const tajukHtml = `${esc(k.tajuk)}<small>${T.ikon} ${esc(T.nama.toUpperCase())} · CABUTAN BERTUAH</small>`;
+  const lok = {
+    gunung: ' · ⛰️ ATAS GUNUNG', tasik: ' · 🏞️ ATAS TASIK', awan: ' · ☁️ ATAS AWAN',
+    laut: ' · 🌊 ATAS LAUT', angkasa: ' · 🌌 ANGKASA',
+  }[k.lokasi] || '';
+  const tajukHtml = `${esc(k.tajuk)}<small>${T.ikon} ${esc(T.nama.toUpperCase())}${lok} · CABUTAN BERTUAH</small>`;
   if ($('pTajuk')._h !== tajukHtml) { $('pTajuk').innerHTML = tajukHtml; $('pTajuk')._h = tajukHtml; }
 
   if (mc) {
@@ -163,7 +167,7 @@ function papar(r, kini) {
 
   // hadiah: semasa larian untuk semua; semasa menunggu hanya di telefon
   // (di skrin MC, hadiah seterusnya sudah tertera pada bar MC)
-  const sedangLari = L && tau < MASA.LARI + MASA.RAIKAN;
+  const sedangLari = L && tau < Logik.masaLari(L) + MASA.RAIKAN;
   if (sedangLari) { $('pHadiahLabel').textContent = '🎁 Hadiah pusingan ini'; $('pHadiahNama').textContent = L.hadiah; }
   else if (k.hadiahSeterusnya) { $('pHadiahLabel').textContent = '🎁 Hadiah seterusnya'; $('pHadiahNama').textContent = k.hadiahSeterusnya; }
   $('pHadiah').classList.toggle('tersembunyi',
@@ -201,7 +205,7 @@ function papar(r, kini) {
 
   // kilat photo-finish + sepanduk juara
   $('pKilat').style.opacity = r.kilat.toFixed(3);
-  const tr = (tau - MASA.LARI) / 1000;
+  const tr = (tau - Logik.masaLari(L)) / 1000;
   const tunjukMenang = L && tr > 0.9 && tr < MASA.RAIKAN / 1000 + 1.5;
   $('pMenang').classList.toggle('tersembunyi', !tunjukMenang);
   if (tunjukMenang) {
@@ -279,8 +283,8 @@ function fasaSebenar(L) {
   if (!L) return 'sedia';
   const t = Api.kini();
   if (t < L.mula) return 'kira';
-  if (t < L.mula + MASA.LARI) return 'lari';
-  if (t < L.mula + MASA.LARI + MASA.RAIKAN) return 'raikan';
+  if (t < L.mula + Logik.masaLari(L)) return 'lari';
+  if (t < L.mula + Logik.masaLari(L) + MASA.RAIKAN) return 'raikan';
   return 'sedia';
 }
 function selaSeterusnya() {
@@ -293,7 +297,7 @@ function selaSeterusnya() {
   if (k && k.fasa === 'tamat') return 30000;
   if (f === 'kira' || f === 'lari') {
     const sebar = Math.min(12, Math.max(2, N / 12)) * 1000;
-    return Math.max(300, L.mula + MASA.LARI - Api.kini()) + Math.random() * sebar;
+    return Math.max(300, L.mula + Logik.masaLari(L) - Api.kini()) + Math.random() * sebar;
   }
   const asas = Math.min(20, Math.max(5, N / 10)) * 1000;
   return asas * (0.7 + Math.random() * 0.6);

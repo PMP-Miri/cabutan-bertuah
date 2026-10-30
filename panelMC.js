@@ -7,13 +7,31 @@
  *  - Kod tuntutan TIDAK ditunjuk besar di skrin (orang ramai nampak). Ada dalam
  *    ⚙️ → "Senarai pemenang & kod" (tertutup) dan fail CSV.
  */
+// `cadang` = tempat larian yang paling sesuai; dipilih automatik bila MC
+// menukar watak (MC masih bebas memilih mana-mana tempat selepas itu).
 const TEMA = [
-  { id: 'wira', ikon: '🥕', nama: 'Buah & Sayur', huraian: '20 buah & sayur comel' },
-  { id: 'kuda', ikon: '🐴', nama: 'Lumba Kuda', huraian: 'Kuda + joki' },
-  { id: 'itik', ikon: '🦆', nama: 'Itik Berenang', huraian: 'Itik getah di kolam' },
-  { id: 'burung', ikon: '🐦', nama: 'Burung Terbang', huraian: 'Burung di litar udara' },
+  { id: 'wira', ikon: '🥕', nama: 'Buah & Sayur', huraian: '20 buah & sayur comel', cadang: 'trek' },
+  { id: 'kuda', ikon: '🐴', nama: 'Lumba Kuda', huraian: 'Kuda lumba', cadang: 'trek' },
+  { id: 'itik', ikon: '🦆', nama: 'Itik Berenang', huraian: 'Itik getah di kolam', cadang: 'tasik' },
+  { id: 'burung', ikon: '🐦', nama: 'Burung Terbang', huraian: 'Burung di udara', cadang: 'awan' },
+  { id: 'bot', ikon: '🚤', nama: 'Bot Laju', huraian: 'Bot memecut di air', cadang: 'laut' },
+  { id: 'roket', ikon: '🚀', nama: 'Roket Angkasa', huraian: 'Roket ke angkasa', cadang: 'angkasa' },
+  { id: 'jet', ikon: '✈️', nama: 'Jet Pejuang', huraian: 'Jet laju di awan', cadang: 'awan' },
 ];
 const cariTema = (id) => TEMA.find((t) => t.id === id) || TEMA[0];
+
+// Lokasi = tempat larian. Laluannya SAMA untuk semua, jadi peraturan cabutan
+// tidak berubah langsung — hanya pemandangan.
+const LOKASI = [
+  { id: 'trek', ikon: '🏟️', nama: 'Stadium', huraian: 'Trek olahraga' },
+  { id: 'gunung', ikon: '⛰️', nama: 'Atas Gunung', huraian: 'Plato tinggi' },
+  { id: 'tasik', ikon: '🏞️', nama: 'Atas Tasik', huraian: 'Pelantar kayu' },
+  { id: 'laut', ikon: '🌊', nama: 'Atas Laut', huraian: 'Pelantar & pulau' },
+  { id: 'awan', ikon: '☁️', nama: 'Atas Awan', huraian: 'Pulau awan' },
+  { id: 'angkasa', ikon: '🌌', nama: 'Angkasa', huraian: 'Orbit atas Bumi' },
+];
+const cariLokasi = (id) => LOKASI.find((t) => t.id === id) || LOKASI[0];
+const DURASI = [5000, 6000, 7000, 8000];
 
 export function pasangMC(ctx) {
   const { S, esc, no3 } = ctx;
@@ -25,7 +43,32 @@ export function pasangMC(ctx) {
   let buka = '';          // '' | 'pin' | 'lain'  (persediaan & tamat dipaksa)
   let pinTaip = '';
   let tandaLalu = '';
-  let draf = { tajuk: '', hadiah: '', tema: 'wira', muzik: true };
+  let lokasiDisentuh = false;  // pegawai sudah pilih tempat sendiri?
+  let draf = { tajuk: '', hadiah: '', tema: 'wira', lokasi: 'trek', durasi: 5000, muzik: true };
+
+  /** Tempat yang SAH bagi sesuatu watak — peraturan dari logik.js, supaya
+   *  pegawai tidak boleh tekan kombinasi yang akan ditolak oleh pelayan
+   *  (cth. jet di angkasa). */
+  function lokasiSah(idTema) {
+    const boleh = Logik.lokasiUntuk(idTema);
+    return LOKASI.filter((l) => boleh.indexOf(l.id) >= 0);
+  }
+  /** Betulkan tempat dalam draf jika ia tidak sah untuk watak yang dipilih. */
+  function betulkanLokasiDraf() {
+    const boleh = Logik.lokasiUntuk(draf.tema);
+    if (boleh.indexOf(draf.lokasi) < 0) draf.lokasi = boleh[0];
+  }
+
+  /** Butang pilihan ikon besar (tema / lokasi). */
+  function butangPilih(kelas, senarai, aktif, tunjukHuraian) {
+    return `<div class="${kelas}">${senarai.map((t) => `<button data-nilai="${t.id}" class="${aktif === t.id ? 'aktif' : ''}">
+      <b>${t.ikon}</b><span>${esc(t.nama)}</span>${tunjukHuraian ? `<i>${esc(t.huraian)}</i>` : ''}</button>`).join('')}</div>`;
+  }
+  /** Pemilih tempoh larian 5-8 saat. */
+  function butangDurasi(aktif, kelas = '') {
+    return `<div class="pilih-durasi ${kelas}">${DURASI.map((ms) =>
+      `<button data-nilai="${ms}" class="${Number(aktif) === ms ? 'aktif' : ''}">${ms / 1000} s</button>`).join('')}</div>`;
+  }
 
   const k = () => S.k;
   const mc = () => S.mod === 'mc';
@@ -65,10 +108,11 @@ export function pasangMC(ctx) {
   function tSediakan() {
     return `<div class="arahan">LANGKAH 1 — Pilih tema & masukkan senarai hadiah.
         <small>Satu hadiah satu baris. Baris paling atas dicabut dahulu.</small></div>
-      <div class="medan"><label>Tema larian</label><div class="pilih-tema">
-        ${TEMA.map((t) => `<button data-tema="${t.id}" class="${draf.tema === t.id ? 'aktif' : ''}">
-          <b>${t.ikon}</b><span>${esc(t.nama)}</span><i>${esc(t.huraian)}</i></button>`).join('')}
-      </div></div>
+      <div class="medan"><label>1. Watak</label>${butangPilih('pilih-tema', TEMA, draf.tema, true)}</div>
+      <div class="medan"><label>2. Tempat larian</label>${butangPilih('pilih-tema pilih-lokasi', lokasiSah(draf.tema), draf.lokasi, true)}
+        ${lokasiSah(draf.tema).length < 2 ? '<div class="bantu">Watak ini hanya sesuai di satu tempat.</div>' : ''}</div>
+      <div class="medan"><label>3. Tempoh satu pusingan</label>${butangDurasi(draf.durasi)}
+        <div class="bantu">Lagi panjang = lagi mendebarkan, tetapi acara jadi lebih lama.</div></div>
       <div class="medan"><label><input type="checkbox" id="mMuzik"${draf.muzik ? ' checked' : ''}> Muzik latar</label></div>
       <div class="medan"><label>Nama acara</label>
         <input class="input" id="mTajuk" maxlength="60" placeholder="Contoh: Hari Pemakanan PKB Miri 2026" value="${esc(draf.tajuk)}"></div>
@@ -101,10 +145,16 @@ export function pasangMC(ctx) {
         <div><b>${K.pusingan}</b><span>Pusingan selesai</span></div>
       </div>
       <div style="display:grid;gap:10px">
-      ${K.pusingan === 0 ? `<div><div class="label">Tukar tema</div><div class="pilih-tema tukar-tema">
-          ${TEMA.map((t) => `<button data-tema="${t.id}" class="${K.tema === t.id ? 'aktif' : ''}"><b>${t.ikon}</b><span>${esc(t.nama)}</span></button>`).join('')}
-        </div><div class="bantu">Tema terkunci selepas pusingan pertama bermula.</div></div>`
-        : `<div class="bantu">Tema: <b>${T.ikon} ${esc(T.nama)}</b> (terkunci)</div>`}
+      ${K.pusingan === 0
+        ? `<div><div class="label">Tukar watak</div>${butangPilih('pilih-tema tukar-tema', TEMA, K.tema)}
+          <div class="bantu">Watak terkunci selepas pusingan pertama bermula.</div></div>`
+        : `<div class="bantu">Watak: <b>${T.ikon} ${esc(T.nama)}</b> (terkunci)</div>`}
+      <div><div class="label">Tukar tempat larian</div>${butangPilih('pilih-tema pilih-lokasi tukar-lokasi', lokasiSah(K.tema), K.lokasi || 'trek')}
+        <div class="bantu">${lokasiSah(K.tema).length < 2
+          ? 'Watak ini hanya sesuai di satu tempat.'
+          : 'Boleh ditukar bila-bila masa, termasuk di tengah acara.'}</div></div>
+      <div><div class="label">Tempoh satu pusingan</div>${butangDurasi(K.durasi || 5000, 'tukar-durasi')}
+        <div class="bantu">Berkuat kuasa pada pusingan seterusnya.</div></div>
       <button class="btn btn-biru" id="mMuzikTukar">${K.muzik === false ? '🔇 Muzik: MATI (tekan untuk hidupkan)' : '🔊 Muzik: HIDUP (tekan untuk matikan)'}</button>
       <button class="btn btn-biru" id="mPenuh">⛶ Skrin penuh</button>
       ${Api.demo ? '<button class="btn btn-biru" id="mDemoIsi">+ Tambah 20 peserta contoh (demo)</button>' : ''}
@@ -171,9 +221,10 @@ export function pasangMC(ctx) {
   function tanda() {
     const K = k();
     const w = K && K.pemenang[K.pemenang.length - 1];
-    return [S.mod, keadaanTingkap(), sibuk ? 1 : 0, ralat, draf.tema, draf.muzik,
+    return [S.mod, keadaanTingkap(), sibuk ? 1 : 0, ralat,
+      draf.tema, draf.lokasi, draf.durasi, draf.muzik,
       K ? [K.fasa, K.pusingan, K.jumlahPeserta, K.pemenang.length, K.layak, K.bakiHadiah,
-        K.hadiahSeterusnya, K.tema, K.muzik, berjalan() ? 1 : 0,
+        K.hadiahSeterusnya, K.tema, K.lokasi, K.durasi, K.muzik, berjalan() ? 1 : 0,
         w ? (kini() >= w.dedah ? 'buka' + w.status : 'tutup') : '-'].join(',') : '-'].join('|');
   }
 
@@ -210,6 +261,8 @@ export function pasangMC(ctx) {
       sibuk = false; buka = ''; ralat = '';
       ctx.masukMC(pin, d);
       if (d.tema) draf.tema = d.tema;
+      if (d.lokasi) draf.lokasi = d.lokasi;
+      if (d.durasi) draf.durasi = d.durasi;
       lukis(true);
     }, (e) => { sibuk = false; ralat = e.message || 'PIN salah.'; pinTaip = ''; lukis(true); });
   }
@@ -234,14 +287,39 @@ export function pasangMC(ctx) {
       const senarai = draf.hadiah.split('\n').map((x) => x.trim()).filter(Boolean);
       if (!senarai.length) { ralat = 'Masukkan sekurang-kurangnya satu hadiah.'; lukis(true); return; }
       ctx.togolMuzik(draf.muzik);
-      buat('sediakan', { tajuk: draf.tajuk, hadiah: senarai, tema: draf.tema, muzik: draf.muzik });
+      buat('sediakan', {
+        tajuk: draf.tajuk, hadiah: senarai, tema: draf.tema,
+        lokasi: draf.lokasi, durasi: draf.durasi, muzik: draf.muzik,
+      });
     });
-    isi.querySelectorAll('.pilih-tema:not(.tukar-tema) button').forEach((b) => {
-      b.onclick = () => { draf.tema = b.dataset.tema; lukis(true); };
+
+    // LANGKAH 1 — simpan dalam draf sahaja (belum dihantar ke pelayan)
+    const pilihDraf = (pemilih, medan, nombor) => isi.querySelectorAll(pemilih).forEach((b) => {
+      b.onclick = () => { draf[medan] = nombor ? Number(b.dataset.nilai) : b.dataset.nilai; lukis(true); };
     });
-    isi.querySelectorAll('.tukar-tema button').forEach((b) => {
-      b.onclick = () => buat('tetapan', { tema: b.dataset.tema });
+    pilihDraf('.pilih-lokasi:not(.tukar-lokasi) button', 'lokasi');
+    pilihDraf('.pilih-durasi:not(.tukar-durasi) button', 'durasi', true);
+    // Watak: pilih tempat yang sesuai sekali gus (roket → angkasa, bot → laut…),
+    // SELAGI pegawai belum sentuh pemilih tempat itu sendiri.
+    isi.querySelectorAll('.pilih-tema:not(.pilih-lokasi):not(.tukar-tema) button').forEach((b) => {
+      b.onclick = () => {
+        draf.tema = b.dataset.nilai;
+        if (!lokasiDisentuh) draf.lokasi = cariTema(draf.tema).cadang;
+        betulkanLokasiDraf();   // jaga-jaga: tempat mesti sah untuk watak ini
+        lukis(true);
+      };
     });
+    isi.querySelectorAll('.pilih-lokasi:not(.tukar-lokasi) button').forEach((b) => {
+      b.addEventListener('click', () => { lokasiDisentuh = true; });
+    });
+
+    // ⚙️ LAIN-LAIN — hantar terus ke pelayan
+    const hantar = (pemilih, medan, nombor) => isi.querySelectorAll(pemilih).forEach((b) => {
+      b.onclick = () => buat('tetapan', { [medan]: nombor ? Number(b.dataset.nilai) : b.dataset.nilai });
+    });
+    hantar('.tukar-tema button', 'tema');
+    hantar('.tukar-lokasi button', 'lokasi');
+    hantar('.tukar-durasi button', 'durasi', true);
     bila('mMuzikTukar', () => {
       const hidup = k().muzik === false;
       ctx.togolMuzik(hidup);
@@ -260,7 +338,8 @@ export function pasangMC(ctx) {
     bila('mReset', () => {
       if (!confirm('PADAM SEMUA peserta, hadiah dan pemenang?\n\nTindakan ini tidak boleh dibatalkan.')) return;
       if (!confirm('Betul-betul padam semua?')) return;
-      draf = { tajuk: '', hadiah: '', tema: 'wira', muzik: true };
+      draf = { tajuk: '', hadiah: '', tema: 'wira', lokasi: 'trek', durasi: 5000, muzik: true };
+      lokasiDisentuh = false;
       buka = '';
       buat('setSemula', {});
     });

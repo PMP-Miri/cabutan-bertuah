@@ -5,6 +5,8 @@ import { WARNA_WIRA, KULIT, RAMBUT } from './watak.js';
 import { ambilTema, SPESIES } from './tema.js';
 
 const rawak = (n) => Math.floor(Math.random() * n);
+/** Warna CSS untuk bulatan pemilih (sepadan dengan hsl() dalam model 3D). */
+const warnaHex = (x) => `hsl(${x.hue} ${Math.round(x.sat * 100)}% 52%)`;
 
 export function pasangPeserta(ctx) {
   const { S, esc, no3 } = ctx;
@@ -15,7 +17,6 @@ export function pasangPeserta(ctx) {
   let ralat = '', sibuk = false, tandaLalu = '', sudahSorak = 0, mintaKod = 0;
   let namaTaip = '';
   const pilih = {
-    jantina: Math.random() < 0.5 ? 'lelaki' : 'perempuan',
     warna: WARNA_WIRA[rawak(WARNA_WIRA.length)].id,
     spesies: SPESIES[rawak(SPESIES.length)].id,
     kulit: rawak(KULIT.length),
@@ -27,8 +28,8 @@ export function pasangPeserta(ctx) {
     if (!L) return 'sedia';
     const t = S.kini();
     if (t < L.mula) return 'kira';
-    if (t < L.mula + MASA.LARI) return 'lari';
-    if (t < L.mula + MASA.LARI + MASA.RAIKAN) return 'raikan';
+    if (t < L.mula + Logik.masaLari(L)) return 'lari';
+    if (t < L.mula + Logik.masaLari(L) + MASA.RAIKAN) return 'raikan';
     return 'sedia';
   }
 
@@ -37,7 +38,7 @@ export function pasangPeserta(ctx) {
     const K = S.k, s = K && K.saya;
     if (!s) return null;
     const L = K.larian;
-    const habisDiSini = L && S.kini() >= L.mula + MASA.LARI + 900;
+    const habisDiSini = L && S.kini() >= L.mula + Logik.masaLari(L) + 900;
     if (s.menang) {
       if (L && s.menang.pusingan === L.no && !habisDiSini) return null; // jangan dedah sebelum animasi tamat
       return s.menang;
@@ -67,24 +68,19 @@ export function pasangPeserta(ctx) {
       <h2 style="margin:0 0 .6em;color:var(--biru);font-size:1.2rem">🏁 Sertai cabutan bertuah</h2>
       ${T.pilihSpesies ? `
       <div class="medan">
-        <label>1. Pilih ${T.id === 'kuda' ? 'joki' : 'watak'} kau</label>
+        <label>1. Pilih watak kau</label>
         <div class="label" style="margin:.4em 0 .2em">🍎 Buah</div><div class="pilih-spesies">${grid('buah')}</div>
         <div class="label" style="margin:.7em 0 .2em">🥦 Sayur</div><div class="pilih-spesies">${grid('sayur')}</div>
       </div>` : `
       <div class="medan">
-        <label>1. Rupa ${esc(T.pelari)} kau</label>
-        <button class="btn btn-biru" id="tDadu">🎲 Tukar warna</button>
-        <span class="bantu" style="margin-left:.5em">Sekarang: <b>${esc(w ? w.nama : '')}</b></span>
+        <label>1. Pilih warna ${esc(T.pelari)} kau</label>
+        <div class="pilih-warna">${WARNA_WIRA.map((x) => `
+          <button data-warna="${x.id}" class="${pilih.warna === x.id ? 'aktif' : ''}" title="${esc(x.nama)}"
+            style="--w:${warnaHex(x)}"><i></i><span>${esc(x.nama)}</span></button>`).join('')}</div>
+        <div class="bantu">Pilihan kau: <b>${esc(w ? w.nama : '')}</b></div>
       </div>`}
       <div class="medan">
-        <label>2. Lelaki atau perempuan?</label>
-        <div class="pilih-jantina">
-          <button data-j="lelaki" class="${pilih.jantina === 'lelaki' ? 'aktif' : ''}">👦 Lelaki</button>
-          <button data-j="perempuan" class="${pilih.jantina === 'perempuan' ? 'aktif' : ''}">👧 Perempuan</button>
-        </div>
-      </div>
-      <div class="medan">
-        <label>3. Nama kau</label>
+        <label>2. Nama kau</label>
         <input class="input" id="tNama" maxlength="28" autocomplete="name" placeholder="Contoh: Aina" value="${esc(namaTaip)}">
       </div>
       ${ralat ? `<p class="ralat">${esc(ralat)}</p>` : ''}
@@ -154,12 +150,12 @@ export function pasangPeserta(ctx) {
     const s = K.saya, m = menangSaya();
     // belum daftar: borang hanya dilukis semula bila perlu (elak papan kekunci telefon berkelip)
     if (!s) return ['borang', K.fasa === 'persediaan' ? 'p' : K.fasa === 'tamat' ? 't' : 'd', K.tema,
-      sibuk ? 1 : 0, ralat, pilih.jantina + pilih.warna + pilih.spesies].join('|');
+      sibuk ? 1 : 0, ralat, pilih.warna + pilih.spesies].join('|');
     return [K.fasa, K.pusingan, K.jumlahPeserta, K.hadiahSeterusnya, K.tema,
       K.larian ? fasaL(K.larian) + K.larian.no : '-',
       s ? s.no : 'x', m ? m.pusingan + m.status + (m.kod || '') : '-',
       K.pemenang.filter((x) => S.kini() >= x.dedah).map((x) => x.status).join(''),
-      sibuk ? 1 : 0, ralat, pilih.jantina + pilih.warna + pilih.spesies].join('|');
+      sibuk ? 1 : 0, ralat, pilih.warna + pilih.spesies].join('|');
   }
 
   function lukis(paksa) {
@@ -201,19 +197,12 @@ export function pasangPeserta(ctx) {
   }
 
   function pasang() {
-    bawah.querySelectorAll('.pilih-jantina button').forEach((b) => {
-      b.onclick = () => { pilih.jantina = b.dataset.j; lukis(true); };
-    });
     bawah.querySelectorAll('.pilih-spesies button').forEach((b) => {
       b.onclick = () => { pilih.spesies = b.dataset.spesies; lukis(true); };
     });
-    const dadu = $('tDadu');
-    if (dadu) dadu.onclick = () => {
-      pilih.warna = WARNA_WIRA[rawak(WARNA_WIRA.length)].id;
-      pilih.kulit = rawak(KULIT.length);
-      pilih.rambut = rawak(RAMBUT.length);
-      lukis(true);
-    };
+    bawah.querySelectorAll('.pilih-warna button').forEach((b) => {
+      b.onclick = () => { pilih.warna = b.dataset.warna; lukis(true); };
+    });
     const elNama = $('tNama');
     if (elNama) elNama.oninput = () => { namaTaip = elNama.value; };
     const sertai = $('tSertai');

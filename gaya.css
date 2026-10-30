@@ -157,8 +157,25 @@ textarea.input:focus, input.input:focus { outline: none; border-color: var(--bir
 .pilih-spesies button span { display: block; font-size: .6rem; font-weight: 700; color: var(--kelabu); }
 .pilih-spesies button.aktif { border-color: var(--hijau); background: #eafaf0; }
 .pilih-spesies button.aktif span { color: var(--hijau); }
-.pilih-jantina { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.pilih-jantina button { padding: 1em; border-radius: 16px; background: #fff; border: 3px solid #e5e7eb; font-weight: 800; font-size: 1.1rem; }
-.pilih-jantina button.aktif { border-color: var(--biru2); background: #eaf1ff; color: var(--biru2); }
+/* pemilih warna kenderaan/haiwan — bulatan warna + nama kecil */
+.pilih-warna { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.pilih-warna button { padding: .5em .2em; border-radius: 14px; background: #fff;
+  border: 3px solid #e5e7eb; text-align: center; line-height: 1.1; }
+.pilih-warna button i { display: block; width: 30px; height: 30px; margin: 0 auto .25em;
+  border-radius: 50%; background: var(--w); box-shadow: inset 0 -3px 6px rgba(0,0,0,.22); }
+.pilih-warna button span { display: block; font-size: .62rem; font-weight: 700; color: var(--kelabu); }
+.pilih-warna button.aktif { border-color: var(--biru2); background: #eaf1ff; }
+.pilih-warna button.aktif span { color: var(--biru2); }
+
+/* pemilih tempat larian — guna gaya .pilih-tema, tetapi 4 lajur kecil */
+.pilih-lokasi { grid-template-columns: repeat(4, 1fr); }
+.pilih-lokasi button { padding: .6em .25em; border-radius: 14px; }
+.pilih-lokasi button b { font-size: 1.5rem; }
+.pilih-lokasi button span { font-size: .78rem; }
+.pilih-lokasi button i { font-size: .65rem; }
+.pilih-lokasi button.aktif { border-color: var(--hijau); background: #eafaf0; color: var(--hijau); }
+.pilih-durasi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.pilih-durasi button { padding: .7em .3em; border-radius: 14px; background: #fff; border: 3px solid #e5e7eb; font-weight: 800; font-size: 1.05rem; }
+.pilih-durasi button.aktif { border-color: var(--biru2); background: #eaf1ff; color: var(--biru2); }
 .kod-tuntut { font-size: 2.6rem; font-weight: 900; letter-spacing: .15em; background: #fff; color: var(--biru); border-radius: 16px; padding: .2em .4em; display: inline-block; margin: .3em 0; }
 #konfeti2d { position: fixed; inset: 0; pointer-events: none; z-index: 60; }

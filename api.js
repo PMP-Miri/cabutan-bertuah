@@ -24,6 +24,13 @@ var Api = (function () {
     return id;
   }
 
+  /** Mod Demo: 128 bit rawak kriptografi daripada pelayar (sama gred dengan pelayan). */
+  function benihAman() {
+    var a = new Uint32Array(4);
+    (window.crypto || window.msCrypto).getRandomValues(a);
+    return Array.prototype.map.call(a, function (x) { return ('0000000' + x.toString(16)).slice(-8); }).join('');
+  }
+
   /* ── Demo ── */
   function bacaDemo() {
     try { return JSON.parse(localStorage.getItem('wp_demo')) || Logik.baru(); } catch (e) { return Logik.baru(); }
@@ -56,13 +63,13 @@ var Api = (function () {
                 var n = mula + i;
                 k = Logik.laksana(k, 'daftar', {
                   nama: nama[n % nama.length] + (n >= nama.length ? ' ' + (Math.floor(n / nama.length) + 1) : ''),
-                  jantina: n % 2 ? 'perempuan' : 'lelaki', warna: warna[(n * 5) % warna.length],
+                  warna: warna[(n * 5) % warna.length],
                   spesies: SPESIES_DEMO[(n * 7) % SPESIES_DEMO.length],
                   kulit: n % 4, rambut: (n * 3) % 4, peranti: 'demo-' + n
                 }, kini).keadaan;
               }
             } else {
-              var x = Logik.laksana(k, q.t, d, kini);
+              var x = Logik.laksana(k, q.t, d, kini, benihAman());
               k = x.keadaan;
               tulisDemo(k);
               if (q.t === 'daftar') return ok({ ok: true, data: Logik.awam(k, kini, d.peranti) });

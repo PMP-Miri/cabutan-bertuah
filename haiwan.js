@@ -1,6 +1,6 @@
 /**
  * haiwan.js — Watak tema haiwan untuk Wira Pecut (Three.js tulen).
- *   buatKuda(p)   : kuda + joki (joki = watak manusia peserta, ikut jantina)
+ *   buatKuda(p)   : kuda lumba TANPA joki; kain pelana ikut warna pilihan peserta
  *   buatItik(p)   : itik gaya "itik getah", badan ikut warna pilihan
  *   buatBurung(p) : burung bulat, bulu ikut warna pilihan
  *
@@ -13,11 +13,6 @@ import * as THREE from 'three';
 import {
   hsl, cariWarna, benih, kapsul, std, buatMata, kapsulArah,
 } from './watak.js';
-import { buatBuahSayur, poseJokiBuahSayur } from './buahsayur.js';
-
-// Joki = watak buah/sayur pilihan peserta (menggantikan watak manusia)
-const buatWira = buatBuahSayur;
-const poseJoki = poseJokiBuahSayur;
 
 const bola = (r, m, ws = 20, hs = 14) => new THREE.Mesh(new THREE.SphereGeometry(r, ws, hs), m);
 const lancar = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
@@ -206,13 +201,8 @@ export function buatKuda(p) {
   });
   badan.add(ekor);
 
-  // JOKI = watak manusia peserta (jantina, warna & huruf ikut pilihan)
-  const joki = buatWira({ ...p, seed: 'joki' + (p.seed ?? '') });
-  joki.grup.scale.setScalar(0.46);
-  // punggung joki (akar→badan = 0.92 × skala 0.5 ≈ 0.46) mesti duduk atas
-  // pelana (≈ +0.33 dari pusat badan kuda), jadi asalnya ≈ 0.33 − 0.46.
-  joki.grup.position.set(0, -0.11, -0.04);
-  badan.add(joki.grup);
+  // Tiada joki — kuda lumba sahaja. Nombor & warna peserta pada kain pelana
+  // sudah cukup untuk dikenali; label nama terapung di atas kepala.
 
   bayang(grup);
 
@@ -241,7 +231,8 @@ export function buatKuda(p) {
     leher.rotation.x = -0.55 + 0.13 * Math.sin(fasa + 0.5) * kuat;
     kepala.rotation.x = 1.05;
     ekor.rotation.set(0.6 + 0.6 * kuat + 0.12 * Math.sin(fasa * 2), 0, 0.1 * Math.sin(fasa));
-    poseJoki(joki, t, g * kuat);
+    // surai berkibar sedikit mengikut langkah
+    leher.rotation.z = 0.04 * g * kuat;
   }
 
   function pose(mod, t, laju = 1) {
@@ -259,13 +250,8 @@ export function buatKuda(p) {
       kaki.dkiri.bawah.rotation.x = 1.3; kaki.dkanan.bawah.rotation.x = 1.3;
       kaki.bkiri.atas.rotation.x = 0.55; kaki.bkanan.atas.rotation.x = 0.55;
       kaki.bkiri.bawah.rotation.x = -0.35; kaki.bkanan.bawah.rotation.x = -0.35;
-      leher.rotation.x = -0.15; kepala.rotation.x = 0.7 + 0.1 * Math.sin(t * 6);
+      leher.rotation.set(-0.15, 0, 0); kepala.rotation.x = 0.7 + 0.1 * Math.sin(t * 6);
       ekor.rotation.set(0.4, 0, 0.3 * Math.sin(t * 5));
-      poseJoki(joki, t, 0);
-      joki.badan.rotation.x = -0.15;
-      joki.kepala.rotation.x = 0.3;
-      joki.bahu.kanan.rotation.set(-0.4, 0, 2.3 + 0.2 * Math.sin(t * 8));
-      joki.siku.kanan.rotation.x = -0.3;
       return;
     }
     // sedia
@@ -278,12 +264,10 @@ export function buatKuda(p) {
     leher.rotation.x = -0.45 + 0.06 * Math.sin(t * 1.1);
     kepala.rotation.x = 1.05 + 0.08 * Math.sin(t * 2.2);
     ekor.rotation.set(0.35, 0, 0.35 * Math.sin(t * 2.4));
-    poseJoki(joki, t, 0);
-    joki.badan.rotation.x = -0.4;
-    joki.kepala.rotation.x = 0.35;
+    leher.rotation.z = 0;
   }
 
-  return { jenis: 'kuda', grup, pose, joki };
+  return { jenis: 'kuda', grup, pose };
 }
 
 /* ══════════════════════════ ITIK ══════════════════════════ */
