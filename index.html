@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f2a5c">
+<title>Wira Pecut · Cabutan Bertuah</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="gaya.css">
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js" } }</script>
+<script src="config.js"></script>
+<script src="logik.js"></script>
+<script src="api.js"></script>
+</head>
+<!--
+  SATU HALAMAN UNTUK SEMUA:
+  - Laptop MC (sambung ke projektor): tekan 🎙️ di penjuru kiri bawah, masukkan PIN.
+  - Telefon peserta (imbas QR): nampak larian yang sama + borang daftar di bawah.
+-->
+<body class="pentas mod-peserta">
+  <!-- ── Skrin 3D (sama untuk semua) ── -->
+  <div class="tayang" id="tayang">
+    <div class="p-atas">
+      <div class="p-tajuk" id="pTajuk">WIRA PECUT<small>CABUTAN BERTUAH</small></div>
+      <div class="p-pusingan" id="pPusingan">SEDIA</div>
+    </div>
+    <button class="p-muzik tersembunyi" id="pMuzik" title="Tekan M untuk hidup/mati">🔊 Muzik</button>
+
+    <div class="p-juara tersembunyi" id="pJuara"><h3>🏆 Papan Juara</h3><ol id="pJuaraSenarai"></ol></div>
+    <div class="p-hadiah tersembunyi" id="pHadiah"><span id="pHadiahLabel">Hadiah seterusnya</span><b id="pHadiahNama"></b></div>
+
+    <div class="p-lobi tersembunyi" id="pLobi">
+      <img id="pQR" alt="Kod QR pendaftaran">
+      <b id="pLobiTajuk">Imbas untuk sertai!</b>
+      <div class="bil" id="pLobiBil"></div>
+    </div>
+
+    <div id="pLabel"></div>
+    <div class="p-kira" id="pKira"></div>
+    <div class="p-kilat" id="pKilat"></div>
+    <div class="p-menang tersembunyi" id="pMenang"><div class="k1" id="pM1"></div><div class="k2" id="pM2"></div><div class="k3" id="pM3"></div></div>
+  </div>
+
+  <!-- ── Bahagian PESERTA (telefon): daftar & status ── -->
+  <div class="lembar" id="lembar">
+    <div class="halaman">
+      <div id="tBawah"></div>
+      <button class="mc-masuk" id="mcMasuk" title="Masuk sebagai MC (perlu PIN)">🎙️ Pegawai / MC? Masuk di sini</button>
+    </div>
+  </div>
+  <canvas id="konfeti2d"></canvas>
+
+  <!-- ── Bahagian MC: bar bawah + tetingkap ── -->
+  <div class="mc-bar tersembunyi" id="mcBar"></div>
+  <div class="mc-tingkap tersembunyi" id="mcTingkap"><div class="kad" id="mcIsi"></div></div>
+
+  <script type="module" src="utama.js"></script>
+</body>
+</html>
