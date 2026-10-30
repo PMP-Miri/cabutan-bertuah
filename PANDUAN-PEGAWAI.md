@@ -27,7 +27,7 @@ Tip: tandakan pautan `.../index.html#mc` pada laptop MC. Tetingkap PIN terus ter
 | 🦆 **Itik Berenang** | Itik getah bertopi kelasi | warna itik |
 | 🐦 **Burung Terbang** | Burung comel terbang | warna bulu |
 | 🚤 **Bot Laju** | Bot memecut, semburan air di belakang | warna bot |
-| 🚀 **Roket Angkasa** | Roket berapi di trek neon | warna roket |
+| 🚀 **Roket Angkasa** | Roket berlepas **lurus ke atas** dari pad di Bumi, menembusi awan hingga garisan 100 KM | warna roket |
 | ✈️ **Jet Pejuang** | Jet dengan afterburner & kontrel | warna jet |
 
 Watak boleh ditukar sehingga pusingan pertama bermula, kemudian terkunci.
@@ -41,7 +41,7 @@ Watak boleh ditukar sehingga pusingan pertama bermula, kemudian terkunci.
 | 🏞️ **Atas Tasik** | Pelantar kayu atas air, daun teratai, bukit hijau |
 | 🌊 **Atas Laut** | Pelantar atas lautan terbuka, pulau kelapa, camar |
 | ☁️ **Atas Awan** | Trek pelangi atas pulau awan, pelangi besar |
-| 🌌 **Angkasa** | Trek neon di orbit, Bumi di bawah, bintang & planet bercincin |
+| 🚀 **Bumi → Angkasa** | Pusat pelancaran di Bumi. Roket naik lurus; langit bertukar biru → hitam berbintang; garisan penamat **100 KM**; juara mendarat di stesen angkasa |
 
 ### Tempat mana sesuai untuk watak mana
 
@@ -81,6 +81,30 @@ mendebarkan, tetapi satu pusingan jadi lebih lama:
    (satu baris satu hadiah, baris atas dicabut dahulu). Tekan **✓ Simpan & Buka Pendaftaran**.
 4. Kod QR muncul di penjuru kanan bawah skrin. Peserta imbas dan daftar.
    Bilangan peserta naik secara langsung di bawah QR.
+
+## Apa yang orang ramai nampak semasa larian
+
+Supaya skrin tidak serabut, larian dibahagi dua bahagian:
+
+1. **Separuh pertama** — kamera mengikut kumpulan dari tepi. Hanya **3 teratas**
+   ada label nama (🥇🥈🥉).
+2. **Separuh akhir — 🎬 SLOW-MO.** Larian perlahan kira-kira 5 kali, kamera
+   bertukar ke garisan penamat dan **zum kepada 4 pendahulu sahaja**. Nama
+   mereka jadi besar di atas kepala, dan senarai kedudukan langsung muncul di
+   bar bawah skrin. Di sinilah orang ramai bersorak.
+
+Empat pendahulu itu sengaja diletak di **lorong bersebelahan di tengah trek**,
+supaya kamera boleh zum rapat tanpa pelari lain masuk ke dalam bingkai.
+Susunan mereka dalam blok itu **dikocok setiap pusingan**, jadi kedudukan
+lorong tidak memberi petunjuk siapa akan menang.
+
+**Roket (Bumi → Angkasa)** guna kamera sendiri: syot rendah di pad semasa
+berlepas, kamera naik bersama roket menembusi awan, kemudian slow-mo zum pada
+4 pendahulu dengan garisan 100 KM muncul dari atas. Juara terbang ke stesen
+angkasa; roket lain kembali ke pad untuk pusingan seterusnya.
+
+Slow-mo **tidak mengubah masa**. Satu pusingan tetap 5-8 saat seperti dipilih,
+dan pemenang tetap melepasi garisan tepat pada saat yang sama.
 
 ## Setiap pusingan
 
@@ -172,7 +196,8 @@ ditetapkan. Siapa pecut di depan pada saat ke-3 tidak mengubah apa-apa.
 | Lebih 300 | ❌ Tidak disokong (sistem menolak pendaftaran ke-301). |
 
 - Maksimum **60 hadiah**.
-- **12 pelari** dipaparkan di trek setiap pusingan (dipilih rawak, pemenang sentiasa antaranya).
+- **8 pelari** dipaparkan di trek setiap pusingan (dipilih rawak, pemenang
+  sentiasa antaranya). Dulu 12, dikurangkan supaya skrin tidak serabut.
 - Pemenang dipilih oleh **pelayan** saat MC tekan butang. Animasi hanya melakonkan
   keputusan itu. Supaya telefon boleh menunjukkan larian yang sama, data larian
   (termasuk siapa pemenang) dihantar ke telefon semasa kiraan detik. Orang yang

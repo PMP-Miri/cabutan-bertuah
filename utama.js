@@ -14,7 +14,8 @@ import * as THREE from 'three';
 import { buatAdegan } from './adegan.js';
 import { hidupkanBunyi, Bunyi } from './bunyi.js';
 import { Muzik } from './muzik.js';
-import { ambilTema } from './tema.js';
+import { ambilTema, cariSpesies } from './tema.js';
+import { cariWarna } from './watak.js';
 import { pasangMC } from './panelMC.js';
 import { pasangPeserta } from './panelPeserta.js';
 
@@ -107,8 +108,35 @@ $('pQR').src = 'https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=
 
 /* ───────── Label nama atas kepala ───────── */
 const labelEl = new Map();
+/**
+ * Elak label bertindih. Dari sudut kamera, dua pelari boleh hampir sebaris
+ * (contohnya dua pendahulu di lorong bersebelahan semasa slow-mo), jadi label
+ * nama besar mereka bertindih dan satu nama tidak terbaca (dilihat dalam render).
+ * Label PALING BAWAH kekal; label lain ditolak ke atas sehingga tidak bertindih.
+ * Tidak melepasi had atas (bawah bar sinema) supaya label tidak terlindung.
+ * Kotak: label diletak dengan translate(-50%,-100%) → [x−w/2, x+w/2] × [y−h, y].
+ * @param {{el:HTMLElement,x:number,y:number}[]} diletak
+ */
+function rungkaiLabel(diletak, H) {
+  const atasMin = H * 0.09;
+  const kotak = [];
+  diletak.sort((a, b) => b.y - a.y).forEach((d) => {
+    const w = d.el.offsetWidth, h = d.el.offsetHeight;
+    let y = d.y;
+    for (let ulang = 0; ulang < 8; ulang++) {
+      const k = kotak.find((q) => Math.abs(d.x - q.x) < (w + q.w) / 2 + 4 && y > q.y - q.h - 3 && y - h < q.y + 3);
+      if (!k) break;
+      y = k.y - k.h - 4;
+    }
+    y = Math.max(y, atasMin + h);
+    kotak.push({ x: d.x, y, w, h });
+    if (y !== d.y) d.el.style.top = y + 'px';
+  });
+}
+
 function kemasLabel(senarai, tapis) {
   const ada = new Set();
+  const diletak = [];
   const W = tayang.clientWidth, H = tayang.clientHeight, v = new THREE.Vector3();
   senarai.filter(tapis).forEach((l) => {
     v.copy(l.pos).project(camera);
@@ -120,12 +148,16 @@ function kemasLabel(senarai, tapis) {
     if (el._t !== teks) { el.innerHTML = teks; el._t = teks; }
     el.classList.toggle('menang', !!l.menang);
     el.classList.toggle('saya', !!l.saya);
-    el.style.left = ((v.x + 1) / 2) * W + 'px';
-    el.style.top = ((1 - v.y) / 2) * H + 'px';
+    el.classList.toggle('besar', !!l.besar);
+    const x = ((v.x + 1) / 2) * W, y = ((1 - v.y) / 2) * H;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
     el.style.display = '';
+    diletak.push({ el, x, y });
     ada.add(l.id);
   });
   labelEl.forEach((el, id) => { if (!ada.has(id)) el.style.display = 'none'; });
+  rungkaiLabel(diletak, H);
 }
 
 /** Pemenang larian L (nama & nombor) — daripada senarai pemenang atau senarai pelari. */
@@ -149,18 +181,21 @@ function papar(r, kini) {
 
   const lok = {
     gunung: ' · ⛰️ ATAS GUNUNG', tasik: ' · 🏞️ ATAS TASIK', awan: ' · ☁️ ATAS AWAN',
-    laut: ' · 🌊 ATAS LAUT', angkasa: ' · 🌌 ANGKASA',
+    laut: ' · 🌊 ATAS LAUT', angkasa: ' · 🚀 BUMI → ANGKASA',
   }[k.lokasi] || '';
   const tajukHtml = `${esc(k.tajuk)}<small>${T.ikon} ${esc(T.nama.toUpperCase())}${lok} · CABUTAN BERTUAH</small>`;
   if ($('pTajuk')._h !== tajukHtml) { $('pTajuk').innerHTML = tajukHtml; $('pTajuk')._h = tajukHtml; }
 
   if (mc) {
     Muzik.tukarTema(k.tema || 'wira');
+    // slow-mo guna suasana 'kira' = gulungan snare yang makin rapat (debaran),
+    // kemudian fanfar 'menang' tepat selepas garisan penamat
     Muzik.suasana(
       k.fasa === 'tamat' ? 'lobi'
         : r.fasa === 'raikan' ? 'menang'
-          : r.fasa === 'lari' ? 'lari'
-            : r.fasa === 'kira' ? 'kira' : 'lobi');
+          : r.slowmo ? 'kira'
+            : r.fasa === 'lari' ? 'lari'
+              : r.fasa === 'kira' ? 'kira' : 'lobi');
   }
   $('pPusingan').textContent = k.fasa === 'tamat' ? 'TAMAT'
     : L ? `PUSINGAN ${L.no} · ${k.bakiHadiah} hadiah lagi` : `${k.jumlahHadiah ?? (k.hadiah || []).length} HADIAH`;
@@ -171,7 +206,11 @@ function papar(r, kini) {
   if (sedangLari) { $('pHadiahLabel').textContent = '🎁 Hadiah pusingan ini'; $('pHadiahNama').textContent = L.hadiah; }
   else if (k.hadiahSeterusnya) { $('pHadiahLabel').textContent = '🎁 Hadiah seterusnya'; $('pHadiahNama').textContent = k.hadiahSeterusnya; }
   $('pHadiah').classList.toggle('tersembunyi',
-    k.fasa === 'persediaan' || !(sedangLari || (k.hadiahSeterusnya && !mc)));
+    k.fasa === 'persediaan' || r.slowmo || !(sedangLari || (k.hadiahSeterusnya && !mc)));
+
+  // bar sinema + papan pendahulu
+  $('pSinema').classList.toggle('aktif', !!r.slowmo);
+  paparPendahulu(r, k, mc, sayaId);
 
   // papan juara (projektor sahaja; skrin telefon terlalu kecil)
   const juara = k.pemenang.filter((w) => kini >= w.dedah).slice().reverse();
@@ -219,17 +258,52 @@ function papar(r, kini) {
   }
 
   // label nama
-  const top3 = new Map();
-  if (r.fasa === 'lari') r.label.slice().sort((a, b) => a.kedudukan - b.kedudukan).slice(0, 3)
-    .forEach((l, i) => top3.set(l.id, ['🥇', '🥈', '🥉'][i]));
-  r.label.forEach((l) => { l.kedudukanTunjuk = top3.get(l.id) || ''; l.saya = !!sayaId && l.id === sayaId; });
+  //  - larian biasa : 3 teratas (pingat)
+  //  - SLOW-MO      : HANYA 4 pendahulu yang difokuskan, label besar + nombor
+  //                   kedudukan langsung, supaya mata penonton tahu siapa diikut
+  const PINGAT = ['🥇', '🥈', '🥉', '4️⃣'];
+  const tanda = new Map();
+  if (r.fasa === 'lari') {
+    const ikut = r.slowmo ? r.label.filter((l) => l.fokus) : r.label;
+    ikut.slice().sort((a, b) => a.kedudukan - b.kedudukan).slice(0, r.slowmo ? 4 : 3)
+      .forEach((l, i) => tanda.set(l.id, PINGAT[i]));
+  }
+  r.label.forEach((l) => {
+    l.kedudukanTunjuk = tanda.get(l.id) || '';
+    l.saya = !!sayaId && l.id === sayaId;
+    l.besar = !!r.slowmo && tanda.has(l.id);
+  });
   kemasLabel(r.label, (l) => {
     if (l.saya) return true;
-    if (r.fasa === 'lari') return top3.has(l.id);
+    if (r.fasa === 'lari') return tanda.has(l.id);
     if (r.fasa === 'raikan') return l.menang;
     if (r.fasa === 'lobi' || r.fasa === 'kira') return mc; // telefon: elak 12 label bertindih
     return false;
   });
+}
+
+/* ───────── PENDAHULU dalam bar sinema bawah (slow-mo sahaja) ─────────
+   4 pendahulu yang difokuskan (3 di telefon), susunan langsung, nama besar.
+   Hanya semasa slow-mo: larian biasa kekal bersih (cuma 3 label kecil). */
+function paparPendahulu(r, k, mc, sayaId) {
+  const el = $('pDepanSenarai');
+  let html = '';
+  if (r.slowmo) {
+    const ikutId = new Map((k.peserta || []).map((p) => [p.id, p]));
+    const T = ambilTema(k.tema);
+    const PINGAT = ['🥇', '🥈', '🥉', '4️⃣'];
+    html = r.label.filter((l) => l.fokus).sort((a, b) => a.kedudukan - b.kedudukan).slice(0, mc ? 4 : 3).map((l, i) => {
+      const p = ikutId.get(l.id) || {};
+      // buah/sayur: emoji spesies; tema lain: bulatan warna pilihan peserta
+      const w = cariWarna(p.warna);
+      const ikon = T.pilihSpesies
+        ? `<em>${(cariSpesies(p.spesies) || {}).emoji || ''}</em>`
+        : `<em class="titik" style="--w:hsl(${w.hue} ${Math.round(w.sat * 100)}% 52%)"></em>`;
+      const kelas = (i === 0 ? 'satu' : '') + (sayaId && l.id === sayaId ? ' saya' : '');
+      return `<span class="${kelas}">${PINGAT[i]}${ikon}<b>#${no3(l.no)} ${esc(l.nama)}</b></span>`;
+    }).join('');
+  }
+  if (el._h !== html) { el.innerHTML = html; el._h = html; }
 }
 
 /* ───────── Panel ───────── */

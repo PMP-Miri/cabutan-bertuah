@@ -15,7 +15,7 @@ const TEMA = [
   { id: 'itik', ikon: '🦆', nama: 'Itik Berenang', huraian: 'Itik getah di kolam', cadang: 'tasik' },
   { id: 'burung', ikon: '🐦', nama: 'Burung Terbang', huraian: 'Burung di udara', cadang: 'awan' },
   { id: 'bot', ikon: '🚤', nama: 'Bot Laju', huraian: 'Bot memecut di air', cadang: 'laut' },
-  { id: 'roket', ikon: '🚀', nama: 'Roket Angkasa', huraian: 'Roket ke angkasa', cadang: 'angkasa' },
+  { id: 'roket', ikon: '🚀', nama: 'Roket Angkasa', huraian: 'Berlepas lurus dari Bumi ke angkasa', cadang: 'angkasa' },
   { id: 'jet', ikon: '✈️', nama: 'Jet Pejuang', huraian: 'Jet laju di awan', cadang: 'awan' },
 ];
 const cariTema = (id) => TEMA.find((t) => t.id === id) || TEMA[0];
@@ -28,7 +28,7 @@ const LOKASI = [
   { id: 'tasik', ikon: '🏞️', nama: 'Atas Tasik', huraian: 'Pelantar kayu' },
   { id: 'laut', ikon: '🌊', nama: 'Atas Laut', huraian: 'Pelantar & pulau' },
   { id: 'awan', ikon: '☁️', nama: 'Atas Awan', huraian: 'Pulau awan' },
-  { id: 'angkasa', ikon: '🌌', nama: 'Angkasa', huraian: 'Orbit atas Bumi' },
+  { id: 'angkasa', ikon: '🚀', nama: 'Bumi → Angkasa', huraian: 'Berlepas lurus ke atas hingga 100 KM' },
 ];
 const cariLokasi = (id) => LOKASI.find((t) => t.id === id) || LOKASI[0];
 const DURASI = [5000, 6000, 7000, 8000];

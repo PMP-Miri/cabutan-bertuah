@@ -8,7 +8,10 @@ var Logik = (function () {
   'use strict';
 
   var MASA = { KIRA: 3000, LARI: 5000, RAIKAN: 4500 }; // milisaat (LARI = lalai; MC boleh pilih 5-8 s)
-  var HAD = { PESERTA: 300, HADIAH: 60, PAPAR: 12, NAMA: 28, LARI_MIN: 5000, LARI_MAKS: 8000 };
+  /* PAPAR = berapa pelari dipaparkan setiap pusingan. 8, bukan 12: dengan 12
+     pelari merentas 12 lorong, skrin jadi serabut dan zum slow-mo terpaksa
+     melebar sehingga semua masuk semula ke dalam bingkai. */
+  var HAD = { PESERTA: 300, HADIAH: 60, PAPAR: 8, NAMA: 28, LARI_MIN: 5000, LARI_MAKS: 8000 };
   var TEMA_SAH = ['wira', 'kuda', 'itik', 'burung', 'bot', 'roket', 'jet'];
   var LOKASI_SAH = ['trek', 'gunung', 'tasik', 'awan', 'laut', 'angkasa'];
   /* Tempat yang SESUAI bagi setiap tema. Yang pertama = lalai.

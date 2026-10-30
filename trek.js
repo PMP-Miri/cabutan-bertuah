@@ -37,13 +37,42 @@ export function titik(p, lorong) {
   return { pos: out, arah };
 }
 
-/* ── Laluan MENEGAK untuk roket (lokasi 'angkasa') ──
-   12 pad pelancaran berbaris di paksi X; roket naik lurus ke atas.
-   p = 0 di atas pad, p = 1 di garisan angkasa (y = H). */
-export const ANGKASA = { H: 90, JARAK: 2.0 };
+/* ── Laluan MENEGAK untuk roket (lokasi 'angkasa' = Bumi → Angkasa) ──
+   12 pad pelancaran berbaris di paksi X (z = 0); roket naik lurus ke atas.
+   Memulangkan kedudukan PUSAT roket (grup), bukan tapak:
+     p = 0 → ekor roket duduk di atas pad (pusat di Y0)
+     p = 1 → HIDUNG roket tepat menyentuh garisan angkasa (y = H)
+   Y0 & HIDUNG diukur daripada buatRoket() × skala tema 0.95
+   (ekor/sirip z ≈ −0.82, hidung z ≈ +1.18). */
+export const ANGKASA = {
+  H: 110,          // ketinggian garisan penamat ("100 KM")
+  // jarak antara pad. 2.0 terlalu rapat: label nama besar (~3.9 unit lebar
+  // semasa slow-mo) bertindih bila dua pendahulu hampir sama tinggi.
+  JARAK: 3.0,
+  // pusat roket di atas pad: muncung (z ≈ −0.82 × 0.95 = −0.78) berada tepat
+  // di atas permukaan pad (y = 0.23), bukan tenggelam ke dalamnya
+  Y0: 1.05,
+  HIDUNG: 1.12,    // jarak pusat → hujung hidung (selepas skala)
+  EKOR: 0.8,       // jarak pusat → ekor
+};
+/** Stesen angkasa (podium) bagi lokasi 'angkasa': di atas & di belakang
+ *  garisan penamat, supaya laluan pemenang ke podium tidak melanggar
+ *  sepanduk 100 KM (z = −2.5, y ≈ H+0.8..H+2.3). */
+export const STESEN_ANGKASA = { x: 0, y: ANGKASA.H + 15, z: -14 };
+export function xPad(lorong) { return (lorong - (TREK.LORONG - 1) / 2) * ANGKASA.JARAK; }
+/** Kemajuan → ketinggian. Roket sebenar berlepas PERLAHAN lalu memecut,
+ *  jadi f(p) = p^1.5 (f(0)=0, f(1)=1, sentiasa menaik). Sebab f sama untuk
+ *  semua roket dan monotonik, susunan kedudukan TIDAK berubah dan pemenang
+ *  tetap menyentuh garisan tepat pada u = 1. Selepas p = 1 sambung lurus
+ *  dengan kecerunan yang sama (1.5) supaya tiada sentakan. */
+export function tinggiAngkasa(p) {
+  p = Math.max(0, p);
+  return p <= 1 ? Math.pow(p, 1.5) : 1 + 1.5 * (p - 1);
+}
 export function titikAngkasa(p, lorong) {
-  const x = (lorong - (TREK.LORONG - 1) / 2) * ANGKASA.JARAK;
-  return { pos: new THREE.Vector3(x, Math.max(0, p) * ANGKASA.H, 0), arah: 0 };
+  const A = ANGKASA;
+  const y = A.Y0 + tinggiAngkasa(p) * (A.H - A.Y0 - A.HIDUNG);
+  return { pos: new THREE.Vector3(xPad(lorong), y, 0), arah: 0 };
 }
 
 /* ── Pembantu ── */
@@ -173,7 +202,8 @@ export function buatStadium(scene, { tajuk = 'WIRA PECUT' } = {}) {
 
   // podium juara di padang tengah, berhampiran garis penamat
   const podium = new THREE.Group();
-  podium.position.set(-6, 0, rDalam - 5);
+  const PODIUM_BIASA = new THREE.Vector3(-6, 0, rDalam - 5);
+  podium.position.copy(PODIUM_BIASA);
   const emas = new THREE.MeshStandardMaterial({ color: '#F2C94C', roughness: 0.35, metalness: 0.45 });
   const tapak = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.8, 0.7, 40), new THREE.MeshStandardMaterial({ color: '#FFFFFF', roughness: 0.5 }));
   tapak.position.y = 0.35; tapak.castShadow = tapak.receiveShadow = true;
@@ -704,110 +734,308 @@ export function buatStadium(scene, { tajuk = 'WIRA PECUT' } = {}) {
     return g;
   }
 
-  /* ── ANGKASA: pelantar neon di orbit, Bumi di bawah, bintang & planet ── */
+  /* ══════════ ANGKASA = BUMI → ANGKASA (roket naik LURUS ke atas) ══════════
+     Tidak guna trek bujur langsung. Susun atur (paksi dunia):
+       - 12 pad pelancaran berbaris di paksi X pada z = 0 (lihat titikAngkasa)
+       - kamera sentiasa di sisi +z memandang ke −z
+       - lapisan awan y ≈ 28-46 (roket menembusinya)
+       - garisan penamat "100 KM" pada y = H
+       - stesen angkasa + podium di STESEN_ANGKASA (atas & belakang garisan)
+     Langit ialah SFERA dengan warna dipeta pada ketinggian dunia, jadi bila
+     kamera naik mengikut roket, langit bertukar biru → gelap → hitam berbintang
+     dengan sendirinya, tanpa kod setiap bingkai. */
+  let langitMalam = null, langitSiang = null;   // dicipta oleh buatAngkasa()
+  /** Panggil SETIAP bingkai selepas kamera diletak (adegan.js). Hanya
+   *  berkesan bila lokasi angkasa aktif. */
+  function kemasLangit(posKamera) {
+    if (!langitMalam || lokasiSemasa !== 'angkasa') return;
+    langitMalam.position.copy(posKamera);
+    langitSiang.position.copy(posKamera);
+    const t = Math.max(0, Math.min(1, (posKamera.y - 25) / 75));
+    const s = t * t * (3 - 2 * t);
+    langitSiang.material.opacity = 1 - s;
+    langitSiang.visible = s < 0.999;
+    // bulan & planet hanya muncul bila langit sudah gelap (bukan di langit siang)
+    benda.forEach((m) => {
+      m.material.opacity = m.userData.lut * s;
+      m.visible = s > 0.02;
+    });
+    // Stesen & podium (y ≈ H+15) kelihatan dari tapak sebagai "bola kelabu"
+    // terapung di langit siang (dilihat dalam render). Sorok bila kamera rendah.
+    const tinggi = posKamera.y > 50;
+    if (stesenA) stesenA.visible = tinggi;
+    podium.visible = tinggi;
+  }
+  let stesenA = null;
+  const benda = [];   // bulan, planet, cincin (diisi oleh buatAngkasa)
+
   function buatAngkasa() {
     const g = new THREE.Group();
     const r = rawakL(97);
+    const H = ANGKASA.H;
+    const klipL = (x) => Math.max(0, Math.min(1, x));
 
-    // trek neon gelap: setiap lorong bergaris cahaya
+    // ── 1. Langit ikut KETINGGIAN KAMERA ──
+    // Dua sfera yang sentiasa berpusat pada kamera (kemasLangit, setiap bingkai):
+    //   SIANG : biru cerah ikut sudut dongak (apa yang dilihat dari tanah)
+    //   MALAM : hitam berbintang, cahaya atmosfera biru di ufuk bawah
+    // Kelegapan SIANG berkurang bila kamera naik (≈ 25 → 100 unit), jadi langit
+    // bertukar biru → hitam angkasa ketika roket naik. Warna di bawah ufuk =
+    // warna kabus, supaya tanah jauh bercantum dengan langit tanpa garis.
+    // (Percubaan pertama memeta warna pada ketinggian DUNIA: dari tanah, dongak
+    //  20° sudah mengena y ≈ 117, jadi tapak pelancaran nampak seperti malam.)
+    const UFUK = '#CBE7FB';
+    const warnaHenti = (henti, e) => {
+      for (let i = 1; i < henti.length; i++) {
+        if (e <= henti[i][0]) {
+          const [e0, c0] = henti[i - 1], [e1, c1] = henti[i];
+          return new THREE.Color(c0).lerp(new THREE.Color(c1), klipL((e - e0) / (e1 - e0)));
+        }
+      }
+      return new THREE.Color(henti[henti.length - 1][1]);
+    };
+    // baris kanvas j (0 = atas) ↔ sudut dongak e (darjah) pada SphereGeometry
+    const dongak = (j, h) => 90 - (180 * j) / h;
+    function teksturLangit(henti, bintang) {
+      return teksturKanvas(2048, 1024, (c, w, h) => {
+        for (let j = 0; j < h; j++) {
+          c.fillStyle = '#' + warnaHenti(henti, dongak(j + 0.5, h)).getHexString();
+          c.fillRect(0, j, w, 1);
+        }
+        if (!bintang) return;
+        for (let i = 0; i < 2400; i++) {
+          const j = r() * h * 0.47;                     // atas ufuk sahaja
+          const e = dongak(j, h);
+          const a = klipL((e - 4) / 14);                // pudar dekat ufuk
+          if (a <= 0) continue;
+          // sfera memampatkan arah mendatar ke kutub: lebarkan supaya bulat
+          const sinT = Math.max(0.15, Math.cos((e * Math.PI) / 180));
+          const sz = r() < 0.1 ? 3 : 2;
+          c.globalAlpha = a * (0.5 + r() * 0.5);
+          c.fillStyle = ['#FFFFFF', '#CFE4FF', '#FFE9C9'][i % 3];
+          c.fillRect(r() * w, j, sz / sinT, sz);
+        }
+        c.globalAlpha = 1;
+      });
+    }
+    const bahanLangit = (map, lut) => new THREE.MeshBasicMaterial({
+      map, side: THREE.BackSide, fog: false, depthWrite: false, toneMapped: false,
+      transparent: lut, opacity: 1,
+    });
+    // jejari < 400 (satah jauh kamera dalam utama.js)
+    langitMalam = new THREE.Mesh(new THREE.SphereGeometry(340, 48, 32), bahanLangit(teksturLangit([
+      [-90, UFUK], [-3, UFUK], [0, '#7FB2E6'], [4, '#2B56A8'], [14, '#0E1A4A'], [40, '#060A22'], [90, '#02040F'],
+    ], true), false));
+    langitMalam.renderOrder = -10;
+    langitSiang = new THREE.Mesh(new THREE.SphereGeometry(330, 48, 32), bahanLangit(teksturLangit([
+      [-90, UFUK], [0, UFUK], [6, '#BFE0FA'], [25, '#7DB7F0'], [60, '#3F8DE6'], [90, '#2C78DC'],
+    ], false), true));
+    langitSiang.renderOrder = -9;
+    g.add(langitMalam, langitSiang);
+
+    // ── 2. Tapak pelancaran di Bumi ──
+    const tanah = new THREE.Mesh(new THREE.CircleGeometry(300, 72),
+      new THREE.MeshStandardMaterial({ color: '#6DAA58', roughness: 1 }));
+    tanah.rotation.x = -Math.PI / 2;
+    tanah.receiveShadow = true;
+    g.add(tanah);
+    const konkrit = new THREE.Mesh(new THREE.BoxGeometry(44, 0.1, 22),
+      new THREE.MeshStandardMaterial({ color: '#B7BCC4', roughness: 0.95 }));
+    konkrit.position.set(0, 0.05, -2);
+    konkrit.receiveShadow = true;
+    g.add(konkrit);
+    // parit api di bawah barisan pad
+    const parit = new THREE.Mesh(new THREE.BoxGeometry(36, 0.02, 1.8),
+      new THREE.MeshStandardMaterial({ color: '#4A5059', roughness: 1 }));
+    parit.position.set(0, 0.11, 0);
+    g.add(parit);
+    // pad bersegi lapan + gelang amaran kuning, satu bagi setiap lorong
+    const pad = [], gelangP = [];
     for (let i = 0; i < TREK.LORONG; i++) {
-      const biru = new THREE.Color().setHSL(0.55 + (i / TREK.LORONG) * 0.22, 0.85, 0.55);
-      g.add(cincin(rDalam + (i + 1) * TREK.W, rDalam + i * TREK.W,
-        new THREE.MeshStandardMaterial({
-          color: '#101A33', roughness: 0.45, metalness: 0.4,
-          emissive: biru, emissiveIntensity: 0.42,
-        }), 0.028));
+      pad.push({ x: xPad(i), y: 0.16, z: 0, sx: 1 });
+      gelangP.push({ x: xPad(i), y: 0.23, z: 0, sx: 1, rx: Math.PI / 2 });
     }
-    // pelantar logam gelap
-    g.add(blokBujur(rDalam - 0.4, 1.1, [
-      new THREE.MeshStandardMaterial({ color: '#1A2340', roughness: 0.5, metalness: 0.55, emissive: '#2B3A6B', emissiveIntensity: 0.22 }),
-      new THREE.MeshStandardMaterial({ color: '#0E1526', roughness: 0.7, metalness: 0.5 }),
-    ]));
+    g.add(banyak(new THREE.CylinderGeometry(0.78, 0.86, 0.14, 8),
+      new THREE.MeshStandardMaterial({ color: '#8C939E', roughness: 0.8 }), pad));
+    g.add(banyak(new THREE.TorusGeometry(0.72, 0.045, 6, 24),
+      new THREE.MeshStandardMaterial({ color: '#F2C230', roughness: 0.6 }), gelangP));
 
-    // BUMI besar jauh di bawah
-    const bumi = new THREE.Mesh(new THREE.SphereGeometry(165, 40, 28),
-      new THREE.MeshStandardMaterial({ color: '#2E6FC4', roughness: 0.9, emissive: '#163A6B', emissiveIntensity: 0.3 }));
-    bumi.position.set(-40, -215, -70);
-    g.add(bumi);
-    // benua hijau di atas Bumi
-    const benua = [];
-    for (let i = 0; i < 26; i++) {
-      const th = Math.acos(1 - 2 * r()), ph = r() * Math.PI * 2;
-      const s = 14 + r() * 26;
-      benua.push({
-        x: -40 + 166 * Math.sin(th) * Math.cos(ph),
-        y: -215 + 166 * Math.cos(th),
-        z: -70 + 166 * Math.sin(th) * Math.sin(ph),
-        sx: s, sy: s * 0.5, sz: s, rx: r() * 3, ry: r() * 3,
-        c: ['#3E9B4F', '#4FAE5C', '#C9B882'][i % 3],
+    // menara servis merah-putih di kedua-dua hujung barisan
+    const merah = new THREE.MeshStandardMaterial({ color: '#C8452F', roughness: 0.6 });
+    const putihM = new THREE.MeshStandardMaterial({ color: '#EEF1F5', roughness: 0.6 });
+    const lampuMerah = new THREE.MeshStandardMaterial({ color: '#FF3B30', emissive: '#FF3B30', emissiveIntensity: 1.4 });
+    [-1, 1].forEach((s) => {
+      const m = new THREE.Group();
+      m.position.set(s * 21, 0, -0.5);
+      const TINGGI = 24;
+      [[-0.8, -0.8], [0.8, -0.8], [-0.8, 0.8], [0.8, 0.8]].forEach(([x, z]) => {
+        const tiang = new THREE.Mesh(new THREE.BoxGeometry(0.2, TINGGI, 0.2), merah);
+        tiang.position.set(x, TINGGI / 2, z);
+        m.add(tiang);
       });
+      for (let y = 2; y < TINGGI; y += 2) {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.14, 1.8), (y / 2) % 2 ? putihM : merah);
+        b.position.y = y;
+        m.add(b);
+      }
+      const lampuA = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), lampuMerah);
+      lampuA.position.y = TINGGI + 0.4;
+      m.add(lampuA);
+      m.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      g.add(m);
+    });
+
+    // papan nama tapak di belakang pad
+    const papanTapak = papanTeks('PUSAT PELANCARAN WIRA PECUT', 16, 1.4, '#0F2A5C', '#FFFFFF');
+    papanTapak.position.set(0, 4.4, -6);
+    g.add(papanTapak);
+    [-7.6, 7.6].forEach((x) => {
+      const t = new THREE.Mesh(new THREE.BoxGeometry(0.18, 4, 0.18), putihM);
+      t.position.set(x, 2, -6.1);
+      g.add(t);
+    });
+
+    // tangki bahan api, bangunan kawalan, bukit & pokok di kejauhan
+    [[-24, -12], [24, -12]].forEach(([x, z]) => {
+      const tangki = new THREE.Mesh(new THREE.SphereGeometry(3.2, 24, 16), putihM);
+      tangki.position.set(x, 4.2, z);
+      tangki.castShadow = true;
+      g.add(tangki);
+      const kaki = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.8, 1.4, 16), merah);
+      kaki.position.set(x, 0.7, z);
+      g.add(kaki);
+    });
+    const kawalan = new THREE.Mesh(new THREE.BoxGeometry(12, 4, 6), putihM);
+    kawalan.position.set(-30, 2, 14);
+    kawalan.castShadow = true;
+    g.add(kawalan);
+    const tingkapK = new THREE.Mesh(new THREE.BoxGeometry(11, 1, 0.1),
+      new THREE.MeshStandardMaterial({ color: '#7FD3FF', emissive: '#3B9BD6', emissiveIntensity: 0.5 }));
+    tingkapK.position.set(-30, 2.6, 17.05);
+    g.add(tingkapK);
+    const bukit = [];
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2 + r() * 0.2, d = 170 + r() * 70;
+      bukit.push({ x: Math.cos(a) * d, y: -6, z: Math.sin(a) * d, sx: 40 + r() * 30, sy: 16 + r() * 18, sz: 30 + r() * 20, c: ['#5DAA55', '#6DB860', '#4F9A4C'][i % 3] });
     }
-    g.add(banyak(new THREE.SphereGeometry(1, 10, 8),
-      new THREE.MeshStandardMaterial({ roughness: 1 }), benua));
-    // awan putih nipis di atas Bumi
-    const awanBumi = [];
-    for (let i = 0; i < 40; i++) {
-      const th = Math.acos(1 - 2 * r()), ph = r() * Math.PI * 2;
-      const s = 10 + r() * 20;
-      awanBumi.push({
-        x: -40 + 172 * Math.sin(th) * Math.cos(ph),
-        y: -215 + 172 * Math.cos(th),
-        z: -70 + 172 * Math.sin(th) * Math.sin(ph),
-        sx: s, sy: s * 0.35, sz: s, rx: r() * 3, ry: r() * 3,
+    g.add(banyak(new THREE.SphereGeometry(1, 20, 12), new THREE.MeshStandardMaterial({ roughness: 1 }), bukit));
+    const pk = [];
+    for (let i = 0; pk.length < 70 && i < 600; i++) {
+      const a = r() * Math.PI * 2, d = 40 + r() * 110;
+      const x = Math.cos(a) * d, z = Math.sin(a) * d;
+      if (z > -12 && Math.abs(x) < 40) continue;   // jangan halang kamera / pad
+      pk.push({ x, y: 0, z, s: 1.4 + r() * 1.2 });
+    }
+    g.add(pokok(pk, '#2F8A44'));
+
+    // ── 3. Lapisan awan (roket menembusinya → rasa laju) ──
+    // Gumpalan kecil & JAUH di belakang barisan roket (z < −22) atau jauh ke
+    // tepi. Render pertama: gumpalan besar dekat kamera menutup separuh skrin
+    // dan dari tanah nampak seperti siling.
+    const awanL = [];
+    for (let i = 0; awanL.length < 170 && i < 4000; i++) {
+      const x = (r() - 0.5) * 320, z = -22 - r() * 150;
+      if (Math.abs(x) < 60 && z > -40) continue;     // jangan terlalu dekat di belakang roket
+      const s = 2.6 + r() * 3.6;
+      awanL.push({ x, y: 30 + r() * 16, z, sx: s * 1.8, sy: s * 0.5, sz: s });
+    }
+    for (let i = 0; i < 60; i++) {                   // sisi kiri/kanan jauh
+      const sisi = r() < 0.5 ? -1 : 1, s = 2.6 + r() * 3.6;
+      awanL.push({ x: sisi * (55 + r() * 100), y: 30 + r() * 16, z: -20 + r() * 60, sx: s * 1.8, sy: s * 0.5, sz: s });
+    }
+    g.add(banyak(new THREE.SphereGeometry(1, 14, 10),
+      new THREE.MeshStandardMaterial({ color: '#FFFFFF', roughness: 1, emissive: '#FFFFFF', emissiveIntensity: 0.38, transparent: true, opacity: 0.92 }), awanL));
+
+    // ── 4. Pembaris ketinggian di kedua-dua sisi (penanda laju semasa naik) ──
+    const neonM = new THREE.MeshStandardMaterial({ color: '#7FE8FF', emissive: '#36E0FF', emissiveIntensity: 1.1, roughness: 0.4 });
+    const tanda = [];
+    [-1, 1].forEach((s) => {
+      for (let km = 5; km < 100; km += 5) {
+        const y = (km / 100) * H, besar = km % 20 === 0;
+        tanda.push({ x: s * 12.6, y, z: 0, sx: besar ? 1.3 : 0.6, sy: 0.08, sz: 0.08 });
+      }
+      [20, 40, 60, 80].forEach((km) => {
+        const p = papanTeks(km + ' KM', 2.2, 0.75, '#0F2A5C', '#FFFFFF');
+        p.position.set(s * 13.9, (km / 100) * H, 0);
+        g.add(p);
       });
-    }
-    g.add(banyak(new THREE.SphereGeometry(1, 8, 6),
-      new THREE.MeshStandardMaterial({ color: '#FFFFFF', roughness: 1, transparent: true, opacity: 0.55 }), awanBumi));
+    });
+    g.add(banyak(new THREE.BoxGeometry(1, 1, 1), neonM, tanda));
 
-    // bintang bertaburan (jauh, di segenap arah atas)
-    const bintang = [];
-    for (let i = 0; i < 700; i++) {
-      const a = r() * Math.PI * 2, d = 240 + r() * 320;
-      const y = -40 + r() * 420;
-      const s = 0.5 + r() * 1.5;
-      bintang.push({ x: Math.cos(a) * d, y, z: Math.sin(a) * d, sx: s, c: ['#FFFFFF', '#CFE4FF', '#FFE9C9'][i % 3] });
-    }
-    g.add(banyak(new THREE.SphereGeometry(1, 6, 5),
-      new THREE.MeshStandardMaterial({ roughness: 1, emissive: '#FFFFFF', emissiveIntensity: 1.1 }), bintang));
+    // ── 5. GARISAN PENAMAT 100 KM ──
+    // pita berpetak DI BELAKANG roket + laser DI HADAPAN: roket menembus antara
+    // kedua-duanya, jadi saat melepasi garisan jelas dari kamera di sisi +z.
+    const petakP = teksturKanvas(1040, 40, (c, w, h) => {
+      const sz = h / 2;
+      for (let y = 0; y < 2; y++) for (let x = 0; x < w / sz; x++) {
+        c.fillStyle = (x + y) % 2 ? '#111' : '#fff';
+        c.fillRect(x * sz, y * sz, sz, sz);
+      }
+    });
+    const pita = new THREE.Mesh(new THREE.PlaneGeometry(34, 0.5),
+      new THREE.MeshBasicMaterial({ map: petakP, side: THREE.DoubleSide }));
+    pita.position.set(0, H, -0.75);
+    g.add(pita);
+    const laser = new THREE.Mesh(new THREE.BoxGeometry(34, 0.06, 0.06),
+      new THREE.MeshStandardMaterial({ color: '#FF5A7A', emissive: '#FF2D55', emissiveIntensity: 2 }));
+    laser.position.set(0, H, 0.8);
+    g.add(laser);
+    const sepanduk = papanTeks('100 KM  ·  GARISAN ANGKASA', 22, 1.5, '#E8432F', '#FFFFFF');
+    sepanduk.position.set(0, H + 1.5, -2.5);
+    g.add(sepanduk);
+    [-1, 1].forEach((s) => {
+      const t = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 5, 10), neonM);
+      t.position.set(s * 12.6, H + 0.4, 0);
+      g.add(t);
+    });
 
-    // planet bercincin + bulan
-    const planet = new THREE.Mesh(new THREE.SphereGeometry(30, 24, 18),
-      new THREE.MeshStandardMaterial({ color: '#D9A05B', roughness: 0.95, emissive: '#6B4A22', emissiveIntensity: 0.3 }));
-    planet.position.set(210, 95, -260);
-    const cincinP = new THREE.Mesh(new THREE.TorusGeometry(48, 3.4, 8, 56),
-      new THREE.MeshStandardMaterial({ color: '#E8CFA0', roughness: 1, emissive: '#8A7044', emissiveIntensity: 0.35, transparent: true, opacity: 0.8 }));
+    // ── 6. Stesen angkasa (podium diletak di atasnya oleh setLokasi) ──
+    const S = STESEN_ANGKASA;
+    const stesen = new THREE.Group();
+    stesen.position.set(S.x, S.y, S.z);
+    const cakera = new THREE.Mesh(new THREE.CylinderGeometry(5.5, 5.5, 0.5, 48),
+      new THREE.MeshStandardMaterial({ color: '#DDE3EC', roughness: 0.5, metalness: 0.2, emissive: '#3A4A70', emissiveIntensity: 0.18 }));
+    cakera.position.y = -0.25;
+    cakera.receiveShadow = true;
+    const bawahS = new THREE.Mesh(new THREE.ConeGeometry(5.4, 3, 48),
+      // bawah stesen hanya disuluh cahaya "tanah" hijau → nampak hijau gelap
+      // tanpa emissive yang cukup (dilihat dalam render)
+      new THREE.MeshStandardMaterial({ color: '#B8C2D0', roughness: 0.6, emissive: '#56647E', emissiveIntensity: 0.6 }));
+    bawahS.rotation.x = Math.PI;
+    bawahS.position.y = -2;
+    const gelangS = new THREE.Mesh(new THREE.TorusGeometry(5.5, 0.09, 8, 72), neonM);
+    gelangS.rotation.x = Math.PI / 2;
+    stesen.add(cakera, bawahS, gelangS);
+    const panelM = new THREE.MeshStandardMaterial({ color: '#24418C', roughness: 0.5, emissive: '#1A2F66', emissiveIntensity: 0.45 });
+    [-1, 1].forEach((s) => {
+      const rangka = new THREE.Mesh(new THREE.BoxGeometry(5, 0.22, 0.22), putihM);
+      rangka.position.set(s * 7.5, -0.3, 0);
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(6, 0.08, 3), panelM);
+      panel.position.set(s * 12, -0.3, 0);
+      stesen.add(rangka, panel);
+    });
+    g.add(stesen);
+    stesenA = stesen;
+
+    // ── 7. Bulan & planet bercincin: TINGGI di langit, hanya kelihatan
+    //       dari atas garisan penamat (podium), bukan dari tapak di Bumi ──
+    const bulan = new THREE.Mesh(new THREE.SphereGeometry(16, 32, 22),
+      new THREE.MeshStandardMaterial({ color: '#D5DAE2', roughness: 1, emissive: '#6A7280', emissiveIntensity: 0.4, fog: false }));
+    bulan.position.set(-140, 190, -230);
+    const planet = new THREE.Mesh(new THREE.SphereGeometry(26, 24, 18),
+      new THREE.MeshStandardMaterial({ color: '#D9A05B', roughness: 0.95, emissive: '#6B4A22', emissiveIntensity: 0.35, fog: false }));
+    planet.position.set(165, 205, -245);
+    const cincinP = new THREE.Mesh(new THREE.TorusGeometry(42, 3, 8, 56),
+      new THREE.MeshStandardMaterial({ color: '#E8CFA0', roughness: 1, emissive: '#8A7044', emissiveIntensity: 0.4, transparent: true, opacity: 0.8, fog: false }));
     cincinP.position.copy(planet.position);
     cincinP.rotation.set(Math.PI / 2 - 0.42, 0.3, 0);
     cincinP.scale.set(1, 1, 0.12);
-    g.add(planet, cincinP);
-
-    const bulan = new THREE.Mesh(new THREE.SphereGeometry(16, 20, 14),
-      new THREE.MeshStandardMaterial({ color: '#CDD3DC', roughness: 1, emissive: '#5A6270', emissiveIntensity: 0.3, flatShading: true }));
-    bulan.position.set(-230, 120, -180);
-    g.add(bulan);
-
-    // jalur nebula di langit — supaya latar podium tidak hitam kosong
-    [['#6C3BBF', 0.17], ['#2E6BC4', 0.15], ['#B5479B', 0.13]].forEach(([c, op], i) => {
-      const awanN = [];
-      for (let j = 0; j < 55; j++) {
-        const a = -0.9 + r() * 2.6 + i * 1.7;
-        const d = 360 + r() * 160;
-        const s = 34 + r() * 58;
-        // leper & lebar = rupa jalur nebula, bukan gumpalan bola
-        awanN.push({ x: Math.cos(a) * d, y: 55 + r() * 170, z: Math.sin(a) * d, sx: s * 2.1, sy: s * 0.3, sz: s * 0.35, ry: r() * 3 });
-      }
-      g.add(banyak(new THREE.SphereGeometry(1, 10, 8),
-        new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.7, roughness: 1, transparent: true, opacity: op }), awanN));
+    g.add(bulan, planet, cincinP);
+    [bulan, planet, cincinP].forEach((m) => {
+      m.userData.lut = m.material.opacity;
+      m.material.transparent = true;
+      benda.push(m);
     });
-
-    // tiang lampu neon di bibir dalam trek
-    const neonM = new THREE.MeshStandardMaterial({ color: '#36E0FF', emissive: '#36E0FF', emissiveIntensity: 1.5, roughness: 0.4 });
-    const neon = [];
-    for (let i = 0; i < 28; i++) {
-      const [x, z] = titikBujur(rDalam - 0.9, i / 28);
-      neon.push({ x, y: 0.9, z, sx: 0.09, sy: 0.9, sz: 0.09 });
-    }
-    g.add(banyak(new THREE.CylinderGeometry(1, 1, 1, 6), neonM, neon));
     return g;
   }
 
@@ -817,11 +1045,14 @@ export function buatStadium(scene, { tajuk = 'WIRA PECUT' } = {}) {
     tasik: { bina: buatTasik, langit: ['#3A8EE6', '#9AD0F5', '#F2FAFF'], kabus: '#D3ECF8', jauh: [100, 300], trek: '#C99158', pinggir: '#8A5A35' },
     awan: { bina: buatAwanLokasi, langit: ['#86B6FF', '#FFC9E3', '#FFEBCD'], kabus: '#F8E1EC', jauh: [110, 320], trek: '#FFFFFF', pinggir: '#FFFFFF' },
     laut: { bina: buatLaut, langit: ['#1E6FD0', '#7FC2F0', '#DFF4FF'], kabus: '#BFE2F5', jauh: [120, 340], trek: '#C08A52', pinggir: '#7A5330' },
-    // angkasa: kabus SANGAT jauh supaya bintang & planet tidak pudar
-    angkasa: { bina: buatAngkasa, langit: ['#05081A', '#131A42', '#2A1E52'], kabus: '#0A0F26', jauh: [600, 1400], trek: '#101A33', pinggir: '#1A2340' },
+    // angkasa (Bumi → Angkasa): langit sebenar ialah SFERA dalam buatAngkasa;
+    // `langit` di sini hanya latar sandaran. Kabus = warna ufuk sfera, supaya
+    // tanah jauh pudar terus ke ufuk tanpa garis. Sfera & planet fog:false.
+    angkasa: { bina: buatAngkasa, menegak: true, langit: ['#04061A', '#04061A', '#04061A'], kabus: '#CBE7FB', jauh: [90, 300], trek: '#101A33', pinggir: '#1A2340' },
   };
   const binaan = {};
   let temaSemasa = null;
+  let lokasiSemasa = 'trek';
 
   function langitDari(w) {
     return teksturKanvas(16, 512, (g, ww, h) => {
@@ -834,9 +1065,18 @@ export function buatStadium(scene, { tajuk = 'WIRA PECUT' } = {}) {
   /** Tukar lokasi. Dipanggil SELEPAS setTema (warna lokasi menindih warna tema). */
   function setLokasi(id, T = temaSemasa) {
     if (!Object.prototype.hasOwnProperty.call(LOKASI, id)) id = 'trek';
+    lokasiSemasa = id;
     const V = LOKASI[id];
     hiasStadium.visible = id === 'trek';
     rumput.visible = id === 'trek';
+    // laluan menegak: trek bujur, garisan & gerbang penamat tidak dipakai;
+    // podium berpindah ke stesen angkasa. podium.position ialah objek yang
+    // SAMA dirujuk adegan.js (podiumPos), jadi kamera & konfeti ikut sendiri.
+    const menegak = !!(V && V.menegak);
+    trekAsas.visible = !menegak;
+    if (menegak) podium.position.set(STESEN_ANGKASA.x, STESEN_ANGKASA.y, STESEN_ANGKASA.z);
+    else podium.position.copy(PODIUM_BIASA);
+    podium.visible = true;   // kemasLangit() mungkin menyoroknya semasa di angkasa
     Object.keys(LOKASI).forEach((n) => {
       if (!LOKASI[n]) return;
       if (n === id && !binaan[n]) { binaan[n] = LOKASI[n].bina(); kumpulan.add(binaan[n]); }
@@ -884,6 +1124,9 @@ export function buatStadium(scene, { tajuk = 'WIRA PECUT' } = {}) {
   return {
     kumpulan, podium, kemasOrang, setTema, setLokasi,
     penamatZ: (rLuar + rDalam) / 2, rDalam, rLuar,
+    /** true bila lokasi semasa guna laluan MENEGAK (roket Bumi → Angkasa) */
+    menegak: () => !!(LOKASI[lokasiSemasa] && LOKASI[lokasiSemasa].menegak),
+    kemasLangit,
   };
 }
 
@@ -918,7 +1161,9 @@ export function buatKonfeti(scene, bil = 500) {
       const jauh = (laju / K) * ef;
       p.set(
         pusat.x + Math.cos(sudut) * jauh + Math.sin(tt * 3 + d * 9) * 0.5,
-        Math.max(0.03, y),
+        // relatif kepada ketinggian podium (stesen angkasa di y = H+15);
+        // untuk podium di tanah pusat.y = 0, jadi sama seperti dahulu
+        pusat.y + Math.max(0.03, y),
         pusat.z + Math.sin(sudut) * jauh + Math.cos(tt * 2.5 + a * 9) * 0.5
       );
       e.set(tt * (4 + a * 6), tt * (3 + b * 5), d * 6);

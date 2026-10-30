@@ -21,6 +21,14 @@
 <body class="pentas mod-peserta">
   <!-- ── Skrin 3D (sama untuk semua) ── -->
   <div class="tayang" id="tayang">
+    <!-- SLOW-MO: bar sinema. Atas = tanda slow-mo; bawah = 4 pendahulu (nama besar).
+         Diletak DULU supaya tajuk & label nama dilukis di atasnya. Kedudukan
+         sengaja dalam bar bawah, bukan papan sisi: papan sisi menutup label
+         pelari di lorong luar (diuji dengan render). -->
+    <div class="p-sinema" id="pSinema">
+      <div class="sb-atas"><span>🎬 SLOW-MO · SIAPA JUARA?</span></div>
+      <div class="sb-bawah"><div class="sb-senarai" id="pDepanSenarai"></div></div>
+    </div>
     <div class="p-atas">
       <div class="p-tajuk" id="pTajuk">WIRA PECUT<small>CABUTAN BERTUAH</small></div>
       <div class="p-pusingan" id="pPusingan">SEDIA</div>

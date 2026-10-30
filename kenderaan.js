@@ -198,6 +198,10 @@ export function buatRoket(p) {
 
   const grup = new THREE.Group();
   const akar = new THREE.Group();
+  // 'YXZ': senget (X) dahulu, KEMUDIAN pusing pada paksi tegak (Y). Dengan
+  // susunan lalai 'XYZ', bila roket berpusing ~180° dalam pose menang,
+  // sengetan -1.15 terbalik dan hidung menghala ke BAWAH (dilihat dalam render).
+  akar.rotation.order = 'YXZ';
   grup.add(akar);
 
   // Roket BARING menghadap +Z (semua watak menghadap +Z).
@@ -328,6 +332,7 @@ export function buatJet(p) {
 
   const grup = new THREE.Group();
   const akar = new THREE.Group();
+  akar.rotation.order = 'YXZ';   // lihat nota dalam buatRoket: pusing tanpa terbalik
   grup.add(akar);
 
   const badan = new THREE.Group();
